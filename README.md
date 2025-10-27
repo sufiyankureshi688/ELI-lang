@@ -526,7 +526,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 - **Author**: Sufiyan Kureshi
 - **GitHub**: [@sufiyankureshi688](https://github.com/sufiyankureshi688)
-- **Email**: sufiyankureshi688@gmail.com
+- **Email**: sufiyanmohammed688@gmail.com
 
 ## 🎓 Citation
 
