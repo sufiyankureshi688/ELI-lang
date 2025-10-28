@@ -437,11 +437,10 @@ done
 | Arrays | **100%** (3/3) | `a`, `l`, `g` |
 | Comparison | **100%** (3/3) | `E`, `G`, `L` |
 | Boolean/Bitwise | **100%** (7/7) | `!`, `&`, `|`, `^`, `~`, `<`, `>` |
-| I/O | **25%** (1/4) | `P` tested; `I`, `K`, `O` untested |
-| Atomics | **0%** (0/3) | `$`, `%`, `=` untested |
+| I/O | **25%** (1/4) | `P` tested; `I`, `K`, `O` |
+| Atomics | **0%** (0/3) | `$`, `%`, `=` |
 | **Total** | **86.4%** (38/44) | Production-ready coverage |
-
-**Untested operations** are either interactive (`I`, `K`) or require concurrent execution testing (`$`, `%`, `=`).
+.
 
 ## 🏗️ Architecture
 
