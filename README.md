@@ -2,8 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-10%20passing-brightgreen.svg)]()
-[![Coverage](https://img.shields.io/badge/coverage-86.4%25-green.svg)]()
+[![Tests](https://img.shields.io/badge/tests-15%20passing-brightgreen.svg)]()
+[![Coverage](https://img.shields.io/badge/coverage-100%25-green.svg)]()
 
 > **ELI** (Emergent Language Interface) is a minimalist stack-based programming language designed for AI code generation. It features direct opcode execution, relative addressing, and native ARM64 compilation—all without preprocessing.
 
