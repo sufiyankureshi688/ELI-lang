@@ -20,7 +20,7 @@ class AlphaC2:
 
     def load_backends(self):
         """Load available compiler backends"""
-        backend_dir = 'backend'
+        backend_dir = 'src/backend'
         if not os.path.exists(backend_dir):
             print(f"Warning: Backend directory '{backend_dir}' not found")
             return

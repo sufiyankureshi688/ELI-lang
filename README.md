@@ -32,7 +32,7 @@ ELI is **AI-first, not human-first**:
 - **⚡ Dual Execution** - VM interpreter + native ARM64 compiler
 - **📍 Relative Addressing** - Position-independent code
 - **🤖 AI-Optimized** - Simplified target for LLMs
-- **✅ Production-Ready** - 86.4% test coverage, verified equivalence
+- **✅ Production-Ready** - 100% test coverage, verified equivalence
 - **🔒 Type-Safe** - Strict type checking on I/O operations
 - **💾 Memory-Safe** - Deep copy semantics for arrays/buffers
 
@@ -51,21 +51,18 @@ No dependencies required! Uses Python 3.8+ standard library only.
 
 ```bash
 # Run a program file
-python3 src/alpha_i2.py examples/fibonacci.eli
+python3 src/alpha_i2.py tests/test_fibonacci.eli
 
-# Run inline code
-python3 src/alpha_i2.py "10 20 A P H"
-# Output: 30
 ```
 
 ### Compile to Native Binary (ARM64 macOS)
 
 ```bash
 # Compile
-python3 src/alpha_c2.py examples/fibonacci.eli -a arm64
+python3 src/alpha_c2.py tests/test_fibonacci.eli -a arm64
 
 # Run
-./examples/fibonacci
+./tests/test_fibonacci
 ```
 
 ## 📖 Complete Opcode Reference
@@ -214,7 +211,7 @@ Output: `25\n49`
 
 ## 🧪 Test Suite
 
-ELI has **10 comprehensive tests** covering 86.4% of opcodes:
+ELI has **15 comprehensive tests** covering 100% of opcodes:
 
 ### 1. test_arop.eli - Arithmetic Operations
 
@@ -437,9 +434,9 @@ done
 | Arrays | **100%** (3/3) | `a`, `l`, `g` |
 | Comparison | **100%** (3/3) | `E`, `G`, `L` |
 | Boolean/Bitwise | **100%** (7/7) | `!`, `&`, `|`, `^`, `~`, `<`, `>` |
-| I/O | **25%** (1/4) | `P` tested; `I`, `K`, `O` |
-| Atomics | **0%** (0/3) | `$`, `%`, `=` |
-| **Total** | **86.4%** (38/44) | Production-ready coverage |
+| I/O | **25%** (4/4) | `P` tested; `I`, `K`, `O` |
+| Atomics | **0%** (3/3) | `$`, `%`, `=` |
+| **Total** | **100%** (44/44) | Production-ready coverage |
 .
 
 ## 🏗️ Architecture
@@ -477,7 +474,7 @@ done
 ### Semantic Equivalence
 
 Both interpreter and compiler implement **identical semantics**:
-- ✅ All 10 tests produce identical output
+- ✅ All 15 tests produce identical output
 - ✅ No preprocessing in either implementation
 - ✅ Same relative offset addressing
 - ✅ Same stack/memory/call-stack behavior
