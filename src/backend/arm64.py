@@ -608,6 +608,13 @@ class Backend(CompilerBackend):
             code.append("    sub x19, x19, #8")
             code.append("    ldr x0, [x19]")
             code.append("    bl print_char")
+            
+        elif op == 'p': # PRINTSTRING
+            code.append(" // PRINTSTRING: [array] --")
+            code.append(" sub x19, x19, #8")
+            code.append(" ldr x0, [x19]      // Pop array address")
+            code.append(" bl print_string")
+
 
         elif op == 'H':  # HALT
             code.append("    b exit_program")
@@ -776,5 +783,41 @@ class Backend(CompilerBackend):
         code.append("    ldp x29, x30, [sp], #16")
         code.append("    ret")
         code.append("")
+        
+        code.append("// Helper: Print string from array")
+        code.append("print_string:")
+        code.append(" stp x29, x30, [sp, #-16]!")
+        code.append(" mov x29, sp")
+        code.append(" ")
+        code.append(" // x0 = array address (format: [length, val1, val2, ...])")
+        code.append(" ldr x1, [x0], #8      // Load length, advance to data")
+        code.append(" cbz x1, .print_string_done")
+        code.append(" ")
+        code.append(" // Allocate buffer on stack (max 256 chars)")
+        code.append(" sub sp, sp, #256")
+        code.append(" mov x10, sp           // Buffer pointer")
+        code.append(" mov x11, #0           // Buffer index")
+        code.append(" ")
+        code.append(".print_string_loop:")
+        code.append(" ldr x12, [x0], #8     // Load 64-bit element, advance")
+        code.append(" strb w12, [x10, x11]  // Store low byte to buffer")
+        code.append(" add x11, x11, #1      // Increment buffer index")
+        code.append(" subs x1, x1, #1       // Decrement count")
+        code.append(" bne .print_string_loop")
+        code.append(" ")
+        code.append(" // Write buffer to stdout")
+        code.append(" mov x0, #1            // stdout")
+        code.append(" mov x1, sp            // buffer address")
+        code.append(" mov x2, x11           // length")
+        code.append(" mov x16, #4           // write syscall")
+        code.append(" svc #0x80")
+        code.append(" ")
+        code.append(" add sp, sp, #256      // Clean up buffer")
+        code.append(" ")
+        code.append(".print_string_done:")
+        code.append(" ldp x29, x30, [sp], #16")
+        code.append(" ret")
+        code.append("") 
+
 
         return code

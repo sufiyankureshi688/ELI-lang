@@ -5,7 +5,7 @@ Generates ARM64 assembly for standalone OS/bare metal execution
 No OS dependencies - suitable for bootloader and kernel development
 QEMU UART fully implemented for testing
 
-ALL 42 ELI OPCODES IMPLEMENTED:
+ALL 43 ELI OPCODES IMPLEMENTED:
 - Arithmetic: A s M D X (ADD SUB MUL DIV MOD)
 - Arrays: a l g (MAKEARRAY LENGTH GETINDEX)
 - Comparison: E G L (EQUAL GREATER LESS)
@@ -16,7 +16,7 @@ ALL 42 ELI OPCODES IMPLEMENTED:
 - Atomic: $ % = (CAS TAS FENCE)
 - Control: J Z N H (JUMP JUMPZERO JUMPNOTZERO HALT)
 - Call: C Q (CALL RETURN)
-- I/O: P I K O (PRINTINT INPUTINT INPUTCHAR PRINTCHAR)
+- I/O: P I K O p (PRINTINT INPUTINT INPUTCHAR PRINTCHAR PRINTSTRING)
 """
 
 import subprocess
@@ -843,6 +843,14 @@ SECTIONS
                 "    bl uart_print_char"
             ])
             
+        elif op == 'p': # PRINTSTRING
+            code.extend([
+                "    // PRINTSTRING: [array] --",
+                "    sub x19, x19, #8",
+                "    ldr x0, [x19]      // Pop array address",
+                "    bl uart_print_string"
+            ])
+            
         else:
             code.append(f"    // ERROR: Unknown opcode '{op}'")
             code.append("    b exit_program")
@@ -1003,6 +1011,35 @@ SECTIONS
         code.append("  ldp x29, x30, [sp], #16")
         code.append("  ret")
         code.append("")
+        
+        # ============ UART PRINT STRING ============
+        code.append("uart_print_string:")
+        code.append(" stp x29, x30, [sp, #-16]!")
+        code.append(" mov x29, sp")
+        code.append(" ")
+        code.append(" // x0 = array address (format: [length, val1, val2, ...])")
+        code.append(" ldr x1, [x0], #8      // Load length, advance to data")
+        code.append(" cbz x1, .print_string_done")
+        code.append(" ")
+        code.append(" mov x10, #0x09000000  // UART base")
+        code.append(" ")
+        code.append(".print_string_loop:")
+        code.append(" ldr x11, [x0], #8     // Load 64-bit element, advance")
+        code.append(" ")
+        code.append(".wait_tx_string:")
+        code.append(" ldr w14, [x10, #0x18] // Check UART status")
+        code.append(" tbnz w14, #5, .wait_tx_string")
+        code.append(" strb w11, [x10]       // Write low byte to UART")
+        code.append(" ")
+        code.append(" subs x1, x1, #1       // Decrement count")
+        code.append(" bne .print_string_loop")
+        code.append(" ")
+        code.append(".print_string_done:")
+        code.append(" ldp x29, x30, [sp], #16")
+        code.append(" ret")
+        code.append("")
+
+
     
         return code
 
