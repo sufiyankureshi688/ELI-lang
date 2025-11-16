@@ -11,15 +11,15 @@ class ALPHA_2:
     MAJOR CHANGES from v7.1:
     ✓ REMOVED label system - AI uses relative offsets directly
     ✓ FIXED buffer operations - normal stack order, safe copies
+    ✓ ADDED string auto-conversion - "HELLO" → [72,69,76,76,79]
     
-    43 unique opcodes (zero collisions):
+    42 unique opcodes (zero collisions):
     - Arithmetic, comparison, boolean, bitwise operations
     - Stack manipulation primitives
     - Memory operations with pointer arithmetic
     - Atomic operations for multicore systems
     - Control flow with relative offsets (NO LABELS)
     - Basic I/O primitives
-    - String printing (p opcode for efficient text output)
     
     Design principle: Machine-first for AI code generation.
     Everything optimized for AI, not human readability.
@@ -97,9 +97,7 @@ class ALPHA_2:
             'P': self.op_print_int,  # n --
             'I': self.op_input_int,  # -- n
             'K': self.op_input_char, # -- ascii
-            'O': self.op_print_char,  # ascii --
-            'p': self.op_print_string   # [array] --
-            
+            'O': self.op_print_char  # ascii --
         }
     
     # =============================
@@ -126,6 +124,17 @@ class ALPHA_2:
                 i += 1
                 continue
             
+            # String literal - NEW: Auto-convert to ASCII array
+            if c == '"':
+                i += 1
+                string_chars = []
+                while i < len(program) and program[i] != '"':
+                    string_chars.append(ord(program[i]))
+                    i += 1
+                if i < len(program):
+                    i += 1  # Skip closing quote
+                tokens.append(('BUFFER', string_chars))
+                continue
             
             # Negative number
             if c == '-' and i + 1 < len(program) and program[i+1].isdigit():
@@ -159,7 +168,7 @@ class ALPHA_2:
                 continue
             
             # Operation (uppercase + special chars + lowercase 's')
-            if c.isupper() or c in '!&|^~<>@#=s$%algp':
+            if c.isupper() or c in '!&|^~<>@#=s$%alg':
                 tokens.append(('OP', c))
                 i += 1
                 continue
@@ -618,37 +627,6 @@ class ALPHA_2:
             return True
         except ValueError:
             return False
-        
-    def op_print_string(self):
-        """
-        Print string from array/buffer on stack
-        Stack: [array] --
-    
-        Pops array of ASCII values and prints as string
-        Example: [72, 101, 108, 108, 111] prints "Hello"
-        """
-        if not self.stack:
-            return False
-    
-        arr = self.stack.pop()
-    
-        # Handle both list and BUFFER types
-        if not isinstance(arr, list):
-            return False
-    
-        # Print each character
-        try:
-            for val in arr:
-                if not isinstance(val, int):
-                    return False
-                if val < 0 or val > 0x10FFFF:
-                    return False
-                # Print without newline (like op_print_char)
-                print(chr(val), end='')
-            return True
-        except ValueError:
-            return False
-
 
 
 if __name__ == '__main__':
