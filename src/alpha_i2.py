@@ -603,13 +603,28 @@ class ALPHA_2:
             return False
     
     def op_input_char(self):
-        """Input character - STRICT: requires exactly 1 char"""
+        """Input character (buffered): still returns exactly 1 char per K"""
         try:
-            val = input("Char: ")
-            if len(val) != 1:
-                return False
-            self.stack.append(ord(val))
+            # Create a buffer attribute the first time we need it
+            if not hasattr(self, "_char_buffer"):
+                self._char_buffer = ""
+            # If buffer is empty, read a new line from the user
+            if self._char_buffer == "":
+                line = input("Char: ")
+                # If the user just presses enter, treat it as a newline char
+                if line == "":
+                    self._char_buffer = "\n"
+                else:
+                    self._char_buffer = line
+
+            # Take ONE character from the buffer
+            ch = self._char_buffer[0]
+            self._char_buffer = self._char_buffer[1:]
+
+            # Push its ASCII code on the stack
+            self.stack.append(ord(ch))
             return True
+
         except (EOFError, KeyboardInterrupt):
             return False
     
