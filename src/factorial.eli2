@@ -1,0 +1,14 @@
+# Factorial of 6
+# result = 1
+# i = 6
+# WHILE i > 0: result = result * i; i = i - 1
+# print result
+
+LET result = 1
+LET i = 6
+WHILE @ i 0 G DO
+LET result = @ result @ i M
+LET i = @ i 1 s
+ENDWHILE
+@ result P
+H

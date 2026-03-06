@@ -1,0 +1,13 @@
+# @ ?name  ->  <addr> F
+
+MATCH @ ?name
+
+CONSTRAINT
+single(name)
+is_name(name)
+
+ELI
+-50 q 10000 ADD q
+
+EMIT
+{0} F

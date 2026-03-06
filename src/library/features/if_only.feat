@@ -1,0 +1,12 @@
+# IF *cond THEN *body ENDIF
+
+MATCH IF *cond THEN *body ENDIF
+
+CONSTRAINT
+non_empty(cond)
+non_empty(body)
+
+ELI
+
+EMIT
+{cond} Z [end] {body} [:end]

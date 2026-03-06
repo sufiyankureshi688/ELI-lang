@@ -1,0 +1,12 @@
+# IF *cond THEN *body ELSE *alt ENDIF
+
+MATCH IF *cond THEN *body ELSE *alt ENDIF
+
+CONSTRAINT
+non_empty(cond)
+non_empty(body)
+
+ELI
+
+EMIT
+{cond} Z [else] {body} J [end] [:else] {alt} [:end]

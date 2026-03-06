@@ -1,0 +1,12 @@
+# WHILE *cond DO *body ENDWHILE
+
+MATCH WHILE *cond DO *body ENDWHILE
+
+CONSTRAINT
+non_empty(cond)
+non_empty(body)
+
+ELI
+
+EMIT
+[:start] {cond} Z [end] {body} J [start] [:end]
