@@ -1,8 +1,0 @@
-result = 1
-i = 6
-while @ i 0 G :
-    result = @ result @ i M
-    i = @ i 1 s
-endwhile
-print @ result
-H
