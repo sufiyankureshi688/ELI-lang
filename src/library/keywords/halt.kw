@@ -1,9 +1,0 @@
-# halt — stop the program
-
-KEYWORD halt
-
-SYNTAX
-halt
-
-COMPILATION
--99 q 35 A e

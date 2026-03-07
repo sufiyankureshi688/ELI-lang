@@ -114,7 +114,15 @@ def resolve_labels(text):
 
 def map_full_names(text):
     RE_WORD = re.compile(r'\b([A-Z][A-Z0-9_]+)\b')
-    return RE_WORD.sub(lambda m: NAME_TO_OPCODE.get(m.group(1), m.group(1)), text)
+    result = RE_WORD.sub(lambda m: NAME_TO_OPCODE.get(m.group(1), m.group(1)), text)
+    # Also map lowercase natural keywords to opcodes
+    LOWER_ALIASES = {
+        'halt': 'H', 'return': 'Q', 'call': 'C',
+        'dup': 'U', 'drop': 'V', 'swap': 'W', 'over': 'Y', 'rot': 'R',
+    }
+    RE_LOWER = re.compile(r'\b(' + '|'.join(LOWER_ALIASES) + r')\b')
+    result = RE_LOWER.sub(lambda m: LOWER_ALIASES[m.group(1)], result)
+    return result
 
 
 # ─────────────────────────────────────────────
@@ -594,6 +602,97 @@ def _build_string_table(captures: Dict, processed: Dict) -> Tuple[List[str], Dic
     return string_table, ct_updates
 
 
+def _expand_natural_syntax(tokens: List[str]) -> List[str]:
+    """
+    Expand natural syntax sugar into primitive forms before feature matching.
+    This runs repeatedly until no changes occur (fixed-point).
+
+    Rules (in priority order):
+      x ++           ->  x = @ x 1 A
+      x --           ->  x = @ x 1 s
+      x += expr      ->  x = @ x expr A
+      x -= expr      ->  x = @ x expr s
+      x *= expr      ->  x = @ x expr M
+      x /= expr      ->  x = @ x expr D
+      not expr       ->  expr !
+      for ?v from *start to *end : **body endfor
+                     ->  ?v = *start \n while @ ?v *end L : **body \n ?v = @ ?v 1 A \n endwhile
+    """
+    out = []
+    i = 0
+    n = len(tokens)
+    changed = False
+
+    while i < n:
+        t = tokens[i]
+
+        # x ++  or  x --
+        if i + 1 < n and tokens[i+1] in ('++', '--') and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', t):
+            op = 'A' if tokens[i+1] == '++' else 's'
+            out += [t, '=', '@', t, '1', op]
+            i += 2; changed = True; continue
+
+        # x += expr  (collect expr until newline)
+        AUG = {'+=': 'A', '-=': 's', '*=': 'M', '/=': 'D'}
+        if i + 2 < n and tokens[i+1] in AUG and re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', t):
+            op = AUG[tokens[i+1]]
+            j = i + 2
+            expr = []
+            while j < n and tokens[j] != '\\n':
+                expr.append(tokens[j]); j += 1
+            out += [t, '=', '@', t] + expr + [op]
+            i = j; changed = True; continue
+
+        # not expr  (collect until newline)
+        if t.lower() == 'not':
+            j = i + 1
+            expr = []
+            while j < n and tokens[j] != '\\n':
+                expr.append(tokens[j]); j += 1
+            out += expr + ['!']
+            i = j; changed = True; continue
+
+        # for ?v from *start to *end : **body endfor
+        if t.lower() == 'for' and i + 1 < n:
+            # find 'from', 'to', ':', 'endfor'
+            try:
+                vi = i + 1
+                var = tokens[vi]
+                if tokens[vi+1].lower() != 'from': raise ValueError
+                # collect start tokens until 'to'
+                j = vi + 2
+                start = []
+                while j < n and tokens[j].lower() != 'to':
+                    start.append(tokens[j]); j += 1
+                j += 1  # skip 'to'
+                end = []
+                while j < n and tokens[j] != ':':
+                    end.append(tokens[j]); j += 1
+                j += 1  # skip ':'
+                # collect body until 'endfor'
+                depth = 0
+                body = []
+                while j < n:
+                    if tokens[j].lower() == 'for': depth += 1
+                    if tokens[j].lower() == 'endfor':
+                        if depth == 0: break
+                        depth -= 1
+                    body.append(tokens[j]); j += 1
+                j += 1  # skip 'endfor'
+                # expand: var=start \n while @ var end L : body \n var = @ var 1 A \n endwhile
+                out += [var, '='] + start + ['\\n',
+                        'while', '@', var] + end + ['L', ':'] + body + ['\\n',
+                        var, '=', '@', var, '1', 'A', '\\n',
+                        'endwhile']
+                i = j; changed = True; continue
+            except (ValueError, IndexError):
+                pass
+
+        out.append(t); i += 1
+
+    return out, changed
+
+
 def _process_tokens(tokens: List[str], features: List[KWFeature],
                     ct_state: Dict, debug: bool) -> List[str]:
     output = []
@@ -694,6 +793,15 @@ def preprocess(source: str, keywords_dir: str = None, debug: bool = False) -> st
     tokens = tokenize_source(source)
     if debug:
         print(f"[p3] Tokens: {tokens}", file=sys.stderr)
+
+    # Fixed-point natural syntax expansion (runs before feature matching)
+    for _ in range(100):
+        tokens, changed = _expand_natural_syntax(tokens)
+        if not changed:
+            break
+
+    if debug:
+        print(f"[p3] Expanded: {tokens}", file=sys.stderr)
 
     ct_state: Dict = {}
     output = _process_tokens(tokens, features, ct_state, debug)

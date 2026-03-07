@@ -1,0 +1,13 @@
+# max ?a ?b -> puts larger value in _max
+
+KEYWORD max
+
+SYNTAX
+max ?a ?b
+
+COMPILATION
+if @ ?a @ ?b G :
+    _max = @ ?a
+else :
+    _max = @ ?b
+endif

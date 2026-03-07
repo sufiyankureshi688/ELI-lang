@@ -1,9 +1,0 @@
-KEYWORD assert
-
-SYNTAX
-assert *cond
-
-COMPILATION
-if not *cond :
-    halt
-endif

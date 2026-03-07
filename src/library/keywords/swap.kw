@@ -1,9 +1,0 @@
-KEYWORD swap
-
-SYNTAX
-swap ?a ?b
-
-COMPILATION
-_tmp = @ ?a
-?a = @ ?b
-?b = @ _tmp
