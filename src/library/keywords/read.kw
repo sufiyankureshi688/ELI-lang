@@ -1,0 +1,9 @@
+# @ ?name  ->  <addr> F
+
+SYNTAX
+@ ?name
+
+COMPILATION
+-50 q 10000 A q   # key=10000+hash, load addr
+r                 # emit addr
+-99 q 24 A e      # emit F

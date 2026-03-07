@@ -1,0 +1,23 @@
+# ?name = *expr
+
+SYNTAX
+?name = *expr
+
+COMPILATION
+# key = 10000 + hash(name), save in mem[0]
+-50 q 10000 A 0 T
+
+# load current addr
+0 F q
+
+# if already allocated, jump past allocation to emit
+U 0 E ! 21 N
+
+# addr==0, drop it and allocate
+V
+9999 q U 0 E ! 3 N 1 A
+U 1 A 9999 w
+U 0 F w
+
+# emit expr addr T
+-3 q -4 q x r -99 q 23 A e

@@ -1,0 +1,16 @@
+KEYWORD while
+
+SYNTAX
+while *cond : **body endwhile
+
+COMPILATION
+n U 0 T
+0 F d
+-1 q -2 q x
+n U 1 T
+-99 q 33 A e
+1 F j
+-3 q -4 q x
+-99 q 32 A e
+0 F j
+1 F d

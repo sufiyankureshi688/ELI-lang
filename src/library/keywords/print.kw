@@ -1,0 +1,11 @@
+# print *expr
+
+KEYWORD print
+
+SYNTAX
+print *expr
+
+COMPILATION
+# emit expr then P
+-1 q -2 q x
+-99 q 38 A e
