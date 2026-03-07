@@ -1,0 +1,37 @@
+# func ?name : **body endfunc
+# return *expr
+
+KEYWORD func
+
+SYNTAX
+func ?name : **body endfunc
+
+COMPILATION
+# emit J <skip> to jump over the function body
+n U 0 T
+-99 q 32 A e
+0 F j
+# emit [:__fname__] as label
+# we use the name hash as label id — stored in ct_state[20000+hash]
+# but for simplicity emit a generated label and store mapping
+n U 1 T
+# store funcname->label in ct_state[20000 + hash(name)]
+-50 q 20000 A
+1 F
+w
+1 F d
+# emit body
+-3 q -4 q x
+# emit Q (RETURN) at end
+-99 q 37 A e
+# emit [:skip]
+0 F d
+
+KEYWORD return
+
+SYNTAX
+return *expr
+
+COMPILATION
+-1 q -2 q x
+-99 q 37 A e

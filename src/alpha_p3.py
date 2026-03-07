@@ -448,7 +448,7 @@ def _parse_kw(path: str) -> Optional[KWFeature]:
 
         if U == 'SYNTAX':
             if current_pattern is not None:
-                variants.append(KWVariant(current_pattern, ' '.join(current_eli)))
+                variants.append(KWVariant(current_pattern, '\n'.join(current_eli)))
             current_pattern = None
             current_eli = []
             section = 'syntax'
@@ -467,7 +467,7 @@ def _parse_kw(path: str) -> Optional[KWFeature]:
             if part: current_eli.append(part)
 
     if current_pattern is not None:
-        variants.append(KWVariant(current_pattern, ' '.join(current_eli)))
+        variants.append(KWVariant(current_pattern, '\n'.join(current_eli)))
 
     if not variants:
         print(f"Warning: '{name}' has no SYNTAX sections", file=sys.stderr)
@@ -548,7 +548,7 @@ def tokenize_source(text: str) -> List[str]:
                 j += 1
             j += 1; tokens.append(text[i:j]); i = j; continue
         two = text[i:i+2]
-        if two in (':=','+=','-=','*=','->','==','!=','<=','>=','&&','||'):
+        if two in (':=','+=','-=','*=','->','==','!=','<=','>=','&&','||','++','--'):
             tokens.append(two); i += 2; continue
         if c in '=(),.;:{}[]<>!&|^~+-*/%@':
             tokens.append(c); i += 1; continue
@@ -616,27 +616,55 @@ def _process_tokens(tokens: List[str], features: List[KWFeature],
                     print(f"[p3] '{feat.name}' matched: { {k:v for k,v in captures.items()} }",
                           file=sys.stderr)
 
-                # Recursively process multi-token captures
+                # Pre-allocate any ?name single-token captures that look like variable names
+                # This ensures variables are allocated before recursive body processing
+                for cname, ctoks in captures.items():
+                    if len(ctoks) == 1 and re.match(r'^[a-z_][a-zA-Z0-9_]*$', ctoks[0]):
+                        key = 10000 + _name_hash(ctoks[0])
+                        if ct_state.get(key, 0) == 0:
+                            addr = max(ct_state.get(9999, 0), 1)
+                            ct_state[9999] = addr + 1
+                            ct_state[key] = addr
+
+                # Recursively process captures through feature pipeline
                 processed = {}
                 for cname, ctoks in captures.items():
-                    if len(ctoks) > 1:
-                        processed[cname] = _process_tokens(ctoks, features, ct_state, debug)
-                    else:
-                        processed[cname] = ctoks
+                    # Always process - keywords like 'halt' need pipeline even if single token
+                    sub = _process_tokens(ctoks, features, ct_state, debug)
+                    processed[cname] = sub if sub != ctoks else ctoks
 
                 # Build string table
                 string_table, ct_updates = _build_string_table(captures, processed)
                 ct_state.update(ct_updates)
 
-                # Run compilation ELI
+                # Run compilation
                 emitted = []
                 if variant.compilation.strip():
-                    vm = CompileTimeVM(string_table, ct_state, debug=debug)
-                    emitted = vm.execute(variant.compilation)
-                    if emitted is None:
-                        raise FrontendError(
-                            f"Compilation ELI failed in '{feat.name}' near token {i}"
-                        )
+                    comp = variant.compilation
+                    # High-level mode: if compilation contains capture refs (?x or *x)
+                    # substitute them and run through the feature pipeline
+                    has_capture_ref = any(
+                        f'?{c}' in comp or f'*{c}' in comp or f'**{c}' in comp
+                        for c in captures
+                    )
+                    if has_capture_ref:
+                        # Substitute captures into compilation text
+                        for cname, ctoks in processed.items():
+                            comp = comp.replace(f'**{cname}', '\n'.join(ctoks))
+                            comp = comp.replace(f'*{cname}', ' '.join(ctoks))
+                            comp = comp.replace(f'?{cname}', ctoks[0] if ctoks else '')
+                        # Run through feature pipeline
+                        comp_tokens = tokenize_source(comp)
+                        comp_out = _process_tokens(comp_tokens, features, ct_state, debug)
+                        emitted = [t for t in comp_out if t != '\\n']
+                    else:
+                        # Raw ELI mode
+                        vm = CompileTimeVM(string_table, ct_state, debug=debug)
+                        emitted = vm.execute(comp)
+                        if emitted is None:
+                            raise FrontendError(
+                                f"Compilation ELI failed in '{feat.name}' near token {i}"
+                            )
 
                 if debug:
                     print(f"[p3] '{feat.name}' emitted: {emitted}", file=sys.stderr)

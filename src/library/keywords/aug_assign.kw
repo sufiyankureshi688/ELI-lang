@@ -1,0 +1,23 @@
+SYNTAX
+?name += *expr
+
+COMPILATION
+?name = @ ?name *expr A
+
+SYNTAX
+?name -= *expr
+
+COMPILATION
+?name = @ ?name *expr s
+
+SYNTAX
+?name *= *expr
+
+COMPILATION
+?name = @ ?name *expr M
+
+SYNTAX
+?name /= *expr
+
+COMPILATION
+?name = @ ?name *expr D

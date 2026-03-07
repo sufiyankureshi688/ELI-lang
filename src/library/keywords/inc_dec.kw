@@ -1,0 +1,11 @@
+SYNTAX
+?name ++
+
+COMPILATION
+?name += 1
+
+SYNTAX
+?name --
+
+COMPILATION
+?name -= 1
