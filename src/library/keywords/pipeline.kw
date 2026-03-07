@@ -1,0 +1,8 @@
+# *val |> *func  ->  *func *val
+# Pipes value into function. Chains naturally.
+
+SYNTAX
+*val |> *func
+
+COMPILATION
+*func *val

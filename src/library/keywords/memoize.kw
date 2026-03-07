@@ -1,0 +1,12 @@
+KEYWORD memoize
+
+SYNTAX
+memoize ?result = *expr using ?cache
+
+COMPILATION
+if @ ?cache 0 E :
+    ?result = *expr
+    ?cache = @ ?result 999999 A
+else :
+    ?result = @ ?cache 999999 s
+endif

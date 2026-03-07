@@ -1,0 +1,19 @@
+KEYWORD typedef
+
+SYNTAX
+typedef int ?name
+
+COMPILATION
+1 -50 q 20000 A w
+
+SYNTAX
+typedef pos ?name
+
+COMPILATION
+2 -50 q 20000 A w
+
+SYNTAX
+typedef neg ?name
+
+COMPILATION
+3 -50 q 20000 A w

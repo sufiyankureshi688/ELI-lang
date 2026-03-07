@@ -1,0 +1,12 @@
+KEYWORD _typecheck
+
+SYNTAX
+_typecheck ?name
+
+COMPILATION
+-50 q 20000 A q -9001 T
+-9001 F 2 E -9001 F 3 E | 69 Z
+-9001 F 2 E 33 Z
+-50 q 10000 A q r -99 q 24 A e 0 r -99 q 9 A e 2 r -99 q 34 A e -99 q 35 A e
+31 J
+-50 q 10000 A q r -99 q 24 A e 0 r -99 q 10 A e 2 r -99 q 34 A e -99 q 35 A e

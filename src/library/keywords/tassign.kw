@@ -1,0 +1,8 @@
+KEYWORD tassign
+
+SYNTAX
+tassign ?name = *expr
+
+COMPILATION
+?name = *expr
+_typecheck ?name

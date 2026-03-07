@@ -178,6 +178,7 @@ class CompileTimeVM:
             'j': self._emit_label_ref,
             'q': self._ct_load,
             'w': self._ct_store,
+
         }
 
     def tokenize(self, code: str):
@@ -407,6 +408,8 @@ class CompileTimeVM:
         return True
 
 
+
+
 # ─────────────────────────────────────────────
 # .kw FILE LOADER
 # ─────────────────────────────────────────────
@@ -520,7 +523,7 @@ def match_pattern(pattern: List[str], tokens: List[str], pos: int
                     stopper = pattern[pp].upper(); break
             captured = []
             while i < len(tokens):
-                if tokens[i] == '\\n' and stopper is None: break
+                if tokens[i] == '\\n': break
                 if stopper and tokens[i].upper() == stopper: break
                 captured.append(tokens[i]); i += 1
             if not captured: return None
@@ -556,9 +559,11 @@ def tokenize_source(text: str) -> List[str]:
                 j += 1
             j += 1; tokens.append(text[i:j]); i = j; continue
         two = text[i:i+2]
-        if two in (':=','+=','-=','*=','->','==','!=','<=','>=','&&','||','++','--'):
+        if two in (':=','+=','-=','*=','->','==','!=','<=','>=','&&','||','++','--','|>'):
             tokens.append(two); i += 2; continue
-        if c in '=(),.;:{}[]<>!&|^~+-*/%@':
+        if c.isdigit() or (c=='-' and i+1<n and text[i+1].isdigit() and (not tokens or tokens[-1] in ('=',':','(','\\n'))):
+            pass  # fall through to number handler below
+        elif c in '=(),.;:{}[]<>!&|^~+-*/%@':
             tokens.append(c); i += 1; continue
         if c.isdigit() or (c=='-' and i+1<n and text[i+1].isdigit()):
             j = i+(1 if c=='-' else 0)
@@ -702,6 +707,8 @@ def _process_tokens(tokens: List[str], features: List[KWFeature],
 
         matched = False
         for feat in features:
+            if not isinstance(tokens[i], str):
+                raise FrontendError(f"Non-string token at position {i}: {repr(tokens[i])}, prev: {tokens[max(0,i-3):i]}")
             if feat.keyword and tokens[i].upper() != feat.keyword.upper():
                 continue
 
@@ -769,6 +776,9 @@ def _process_tokens(tokens: List[str], features: List[KWFeature],
                     print(f"[p3] '{feat.name}' emitted: {emitted}", file=sys.stderr)
 
                 output.extend(emitted)
+                for _dbg_t in emitted:
+                    if not isinstance(_dbg_t, str):
+                        raise FrontendError(f"Non-string token {repr(_dbg_t)} emitted by '{feat.name}'")
                 i = new_i
                 matched = True
                 break
