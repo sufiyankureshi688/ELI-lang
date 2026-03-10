@@ -1,0 +1,8 @@
+KEYWORD buse
+
+SYNTAX
+buse ?name = *expr
+
+COMPILATION
+_bcheck ?name
+?name = *expr

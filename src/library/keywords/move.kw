@@ -1,0 +1,11 @@
+KEYWORD move
+
+SYNTAX
+move ?from to ?to
+
+COMPILATION
+-50 q 30000 A q -9010 T
+-9010 F 1 E 6 N
+-99 q 35 A e
+2 -50 q 30000 A w
+1 -51 q 30000 A w

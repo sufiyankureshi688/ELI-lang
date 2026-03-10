@@ -1,0 +1,81 @@
+KEYWORD match
+
+SYNTAX
+match *expr : case *val : **body endcase endmatch
+
+COMPILATION
+if *expr *val E :
+**body
+endif
+
+SYNTAX
+match *expr : case *val1 : **body1 endcase case *val2 : **body2 endcase endmatch
+
+COMPILATION
+if *expr *val1 E :
+**body1
+else :
+if *expr *val2 E :
+**body2
+else :
+endif
+endif
+
+SYNTAX
+match *expr : case *val1 : **body1 endcase else : **elsebody endmatch
+
+COMPILATION
+if *expr *val1 E :
+**body1
+else :
+**elsebody
+endif
+
+SYNTAX
+match *expr : case *val1 : **body1 endcase case *val2 : **body2 endcase else : **elsebody endmatch
+
+COMPILATION
+if *expr *val1 E :
+**body1
+else :
+if *expr *val2 E :
+**body2
+else :
+**elsebody
+endif
+endif
+
+SYNTAX
+match *expr : case *val1 : **body1 endcase case *val2 : **body2 endcase case *val3 : **body3 endcase endmatch
+
+COMPILATION
+if *expr *val1 E :
+**body1
+else :
+if *expr *val2 E :
+**body2
+else :
+if *expr *val3 E :
+**body3
+else :
+endif
+endif
+endif
+
+SYNTAX
+match *expr : case *val1 : **body1 endcase case *val2 : **body2 endcase case *val3 : **body3 endcase else : **elsebody endmatch
+
+COMPILATION
+if *expr *val1 E :
+**body1
+else :
+if *expr *val2 E :
+**body2
+else :
+if *expr *val3 E :
+**body3
+else :
+**elsebody
+endif
+endif
+endif

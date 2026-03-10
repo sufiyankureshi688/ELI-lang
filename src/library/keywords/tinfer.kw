@@ -1,0 +1,29 @@
+# tinfer ?result = *expr using ?a op ?b
+# Infers result type from operand types at compile time:
+#   pos + pos = pos
+#   neg + neg = neg
+#   pos + neg = int
+#   neg + pos = int
+#   pos * pos = pos
+#   neg * neg = pos (neg*neg is positive)
+#   any * 0   = int
+# Stores inferred type tag for ?result in ct_state
+# Then emits the assign + runtime guard
+
+KEYWORD tinfer
+
+SYNTAX
+tinfer ?result = *expr typed ?a plus ?b
+
+COMPILATION
+_tinfer_plus ?result ?a ?b
+?result = *expr
+_typecheck ?result
+
+SYNTAX
+tinfer ?result = *expr typed ?a times ?b
+
+COMPILATION
+_tinfer_times ?result ?a ?b
+?result = *expr
+_typecheck ?result

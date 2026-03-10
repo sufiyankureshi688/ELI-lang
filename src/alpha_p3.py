@@ -529,6 +529,7 @@ def match_pattern(pattern: List[str], tokens: List[str], pos: int
             if not captured: return None
             captures[pt[1:]] = captured; p += 1
         else:
+            while i < len(tokens) and tokens[i] == '\\n': i += 1
             if i >= len(tokens): return None
             if tokens[i].upper() != pt.upper(): return None
             i += 1; p += 1
@@ -585,7 +586,10 @@ class FrontendError(Exception): pass
 
 
 def _name_hash(s: str) -> int:
-    return sum(ord(c)*(i+1) for i,c in enumerate(s))
+    h = 5381
+    for c in s:
+        h = ((h * 31) + ord(c)) & 0x7FFFFFFF
+    return h % 8999 + 1  # 1..8999, avoids 0
 
 
 def _build_string_table(captures: Dict, processed: Dict) -> Tuple[List[str], Dict]:
@@ -814,7 +818,11 @@ def preprocess(source: str, keywords_dir: str = None, debug: bool = False) -> st
         print(f"[p3] Expanded: {tokens}", file=sys.stderr)
 
     ct_state: Dict = {}
-    output = _process_tokens(tokens, features, ct_state, debug)
+    for _ in range(20):
+        output = _process_tokens(tokens, features, ct_state, debug)
+        if output == tokens: break
+        tokens = output
+
     output = [t for t in output if t != '\\n']
     result = ' '.join(output)
     result = resolve_labels(result)

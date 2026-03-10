@@ -1,0 +1,9 @@
+KEYWORD _bcheck
+
+SYNTAX
+_bcheck ?name
+
+COMPILATION
+-50 q 30000 A q -9010 T
+-9010 F 2 E 6 Z
+-99 q 35 A e

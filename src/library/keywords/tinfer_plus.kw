@@ -1,0 +1,13 @@
+KEYWORD _tinfer_plus
+
+SYNTAX
+_tinfer_plus ?result ?a ?b
+
+COMPILATION
+-51 q 20000 A q -9020 T
+-52 q 20000 A q -9021 T
+-9020 F 2 E -9021 F 2 E & 9 Z
+2 -50 q 20000 A w 26 J
+-9020 F 3 E -9021 F 3 E & 9 Z
+3 -50 q 20000 A w 7 J
+1 -50 q 20000 A w

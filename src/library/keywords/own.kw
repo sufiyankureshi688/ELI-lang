@@ -1,0 +1,7 @@
+KEYWORD own
+
+SYNTAX
+own ?name
+
+COMPILATION
+1 -50 q 30000 A w
