@@ -421,10 +421,12 @@ class KWVariant:
 
 
 class KWFeature:
-    def __init__(self, name: str, keyword: Optional[str], variants: List[KWVariant]):
+    def __init__(self, name: str, keyword: Optional[str], variants: List[KWVariant],
+                 priority: int = 0):
         self.name = name
         self.keyword = keyword
         self.variants = variants
+        self.priority = priority  # higher priority → matched first
 
 
 def load_keywords(keywords_dir: str) -> List[KWFeature]:
@@ -434,6 +436,8 @@ def load_keywords(keywords_dir: str) -> List[KWFeature]:
         if not fname.endswith('.kw'): continue
         f = _parse_kw(os.path.join(keywords_dir, fname))
         if f: features.append(f)
+    # Sort by priority (highest first), stable sort preserves alphabetical order for ties
+    features.sort(key=lambda f: f.priority, reverse=True)
     return features
 
 
@@ -442,6 +446,7 @@ def _parse_kw(path: str) -> Optional[KWFeature]:
     lines = open(path).read().splitlines()
 
     keyword = None
+    priority = 0
     variants = []
     current_pattern = None
     current_eli = []
@@ -455,6 +460,11 @@ def _parse_kw(path: str) -> Optional[KWFeature]:
         if U.startswith('KEYWORD'):
             parts = line.split()
             keyword = parts[1] if len(parts) > 1 else None
+            continue
+
+        if U.startswith('PRIORITY'):
+            parts = line.split()
+            priority = int(parts[1]) if len(parts) > 1 else 0
             continue
 
         if U == 'SYNTAX':
@@ -484,12 +494,27 @@ def _parse_kw(path: str) -> Optional[KWFeature]:
         print(f"Warning: '{name}' has no SYNTAX sections", file=sys.stderr)
         return None
 
-    return KWFeature(name, keyword, variants)
+    return KWFeature(name, keyword, variants, priority)
 
 
 # ─────────────────────────────────────────────
 # PATTERN MATCHING
 # ─────────────────────────────────────────────
+
+def _get_nesting_pair(stopper: str) -> Optional[Tuple[str, str]]:
+    """Get (opener, closer) pair for balanced nesting tracking.
+
+    Convention: 'endX' pairs with 'X', 'else' pairs with 'if'/'endif'.
+    Returns None if stopper has no nesting semantics.
+    """
+    s = stopper.lower()
+    if s.startswith('end') and len(s) > 3:
+        base = s[3:]  # endwhile -> while, endif -> if, etc.
+        return (base, s)
+    if s == 'else':
+        return ('if', 'endif')
+    return None
+
 
 def match_pattern(pattern: List[str], tokens: List[str], pos: int
                   ) -> Optional[Tuple[Dict, int]]:
@@ -506,9 +531,24 @@ def match_pattern(pattern: List[str], tokens: List[str], pos: int
             for pp in range(p+1, len(pattern)):
                 if not pattern[pp][0] in '?*':
                     stopper = pattern[pp].upper(); break
+            # Balanced nesting: track opener/closer depth so nested
+            # constructs don't prematurely stop the capture.
+            nesting_pair = _get_nesting_pair(stopper) if stopper else None
+            depth = 0
             captured = []
             while i < len(tokens):
-                if stopper and tokens[i].upper() == stopper: break
+                tok_upper = tokens[i].upper()
+                # Only match stopper at nesting depth 0 — check BEFORE adjusting depth
+                # so that a closing token (e.g. endwhile) that decrements depth to 0
+                # is not simultaneously treated as the stopper for the outer capture.
+                if stopper and tok_upper == stopper and depth == 0:
+                    break
+                if nesting_pair:
+                    opener, closer = nesting_pair
+                    if tok_upper == opener.upper():
+                        depth += 1
+                    elif tok_upper == closer.upper() and depth > 0:
+                        depth -= 1
                 captured.append(tokens[i])
                 i += 1
             # strip leading/trailing newlines
@@ -553,6 +593,12 @@ def tokenize_source(text: str) -> List[str]:
         if c == '#':
             while i < n and text[i] != '\n': i += 1
             continue
+        # Label definition tokens: [:__LN__] — preserve as single token
+        if c == '[' and i+1 < n and text[i+1] == ':':
+            j = i
+            while j < n and text[j] != ']': j += 1
+            if j < n: j += 1  # include closing ]
+            tokens.append(text[i:j].replace(' ', '')); i = j; continue
         if c == '"':
             j = i+1
             while j < n and text[j] != '"':
@@ -562,7 +608,7 @@ def tokenize_source(text: str) -> List[str]:
         two = text[i:i+2]
         if two in (':=','+=','-=','*=','->','==','!=','<=','>=','&&','||','++','--','|>'):
             tokens.append(two); i += 2; continue
-        if c.isdigit() or (c=='-' and i+1<n and text[i+1].isdigit() and (not tokens or tokens[-1] in ('=',':','(','\\n'))):
+        if c.isdigit() or (c=='-' and i+1<n and text[i+1].isdigit() and (not tokens or tokens[-1] in ('=',':','(','\n'))):
             pass  # fall through to number handler below
         elif c in '=(),.;:{}[]<>!&|^~+-*/%@':
             tokens.append(c); i += 1; continue
@@ -585,11 +631,25 @@ def tokenize_source(text: str) -> List[str]:
 class FrontendError(Exception): pass
 
 
+# Global name→hash mapping for collision detection
+_name_hash_registry: Dict[int, str] = {}
+
+
 def _name_hash(s: str) -> int:
     h = 5381
     for c in s:
         h = ((h * 31) + ord(c)) & 0x7FFFFFFF
-    return h % 8999 + 1  # 1..8999, avoids 0
+    result = h % 999983 + 1  # 1..999983 — much larger space
+    # Collision detection
+    if result in _name_hash_registry:
+        if _name_hash_registry[result] != s:
+            raise FrontendError(
+                f"Hash collision: '{s}' and '{_name_hash_registry[result]}' "
+                f"both hash to {result}. Please rename one of them."
+            )
+    else:
+        _name_hash_registry[result] = s
+    return result
 
 
 def _build_string_table(captures: Dict, processed: Dict) -> Tuple[List[str], Dict]:
@@ -652,11 +712,11 @@ def _expand_natural_syntax(tokens: List[str]) -> List[str]:
             out += [t, '=', '@', t] + expr + [op]
             i = j; changed = True; continue
 
-        # not expr  (collect until newline)
+        # not expr  (collect until newline or ':' delimiter)
         if t.lower() == 'not':
             j = i + 1
             expr = []
-            while j < n and tokens[j] != '\\n':
+            while j < n and tokens[j] != '\\n' and tokens[j] != ':':
                 expr.append(tokens[j]); j += 1
             out += expr + ['!']
             i = j; changed = True; continue
@@ -759,10 +819,17 @@ def _process_tokens(tokens: List[str], features: List[KWFeature],
                     )
                     if has_capture_ref:
                         # Substitute captures into compilation text
-                        for cname, ctoks in processed.items():
-                            comp = comp.replace(f'**{cname}', '\n'.join(ctoks))
-                            comp = comp.replace(f'*{cname}', ' '.join(ctoks))
-                            comp = comp.replace(f'?{cname}', ctoks[0] if ctoks else '')
+                        # For ** captures: use RAW (unprocessed) tokens to preserve
+                        # structure for recursive macro re-emission.
+                        # For * and ? captures: use processed tokens.
+                        for cname in captures:
+                            raw_toks = captures[cname]
+                            proc_toks = processed[cname]
+                            # Convert \\n marker tokens to actual newlines for re-tokenization
+                            raw_str = ' '.join('\n' if t == '\\n' else t for t in raw_toks)
+                            comp = comp.replace(f'**{cname}', raw_str)
+                            comp = comp.replace(f'*{cname}', ' '.join(proc_toks))
+                            comp = comp.replace(f'?{cname}', proc_toks[0] if proc_toks else '')
                         # Run through feature pipeline
                         comp_tokens = tokenize_source(comp)
                         comp_out = _process_tokens(comp_tokens, features, ct_state, debug)
@@ -772,8 +839,11 @@ def _process_tokens(tokens: List[str], features: List[KWFeature],
                         vm = CompileTimeVM(string_table, ct_state, debug=debug)
                         emitted = vm.execute(comp)
                         if emitted is None:
+                            context = tokens[max(0,i-2):i+3]
                             raise FrontendError(
-                                f"Compilation ELI failed in '{feat.name}' near token {i}"
+                                f"Compilation ELI failed in '{feat.name}' near token {i}. "
+                                f"Context: {' '.join(str(t) for t in context)}. "
+                                f"Captures: { {k: ' '.join(v) for k, v in captures.items()} }"
                             )
 
                 if debug:
@@ -782,7 +852,10 @@ def _process_tokens(tokens: List[str], features: List[KWFeature],
                 output.extend(emitted)
                 for _dbg_t in emitted:
                     if not isinstance(_dbg_t, str):
-                        raise FrontendError(f"Non-string token {repr(_dbg_t)} emitted by '{feat.name}'")
+                        raise FrontendError(
+                            f"Non-string token {repr(_dbg_t)} emitted by '{feat.name}'. "
+                            f"Captures: { {k: ' '.join(v) for k, v in captures.items()} }"
+                        )
                 i = new_i
                 matched = True
                 break
@@ -818,10 +891,24 @@ def preprocess(source: str, keywords_dir: str = None, debug: bool = False) -> st
         print(f"[p3] Expanded: {tokens}", file=sys.stderr)
 
     ct_state: Dict = {}
-    for _ in range(20):
+    _name_hash_registry.clear()  # reset collision tracking per compilation
+    seen_states = set()  # cycle detection
+    max_passes = 50
+    for pass_num in range(max_passes):
         output = _process_tokens(tokens, features, ct_state, debug)
-        if output == tokens: break
+        if output == tokens:
+            break
+        # Cycle detection: if we've seen this exact output before, we're looping
+        output_key = tuple(output)
+        if output_key in seen_states:
+            print(f"Warning: macro expansion cycle detected at pass {pass_num + 1}, "
+                  f"stopping expansion", file=sys.stderr)
+            break
+        seen_states.add(output_key)
         tokens = output
+    else:
+        print(f"Warning: macro expansion did not converge after {max_passes} passes",
+              file=sys.stderr)
 
     output = [t for t in output if t != '\\n']
     result = ' '.join(output)
