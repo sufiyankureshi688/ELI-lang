@@ -1,0 +1,446 @@
+# ================================================================
+# ELI Keyword Test Suite — Tests ALL 37 .kw features
+# Run: python3 src/alpha_p3.py --run tests/test_all_kw.eli2
+# Each test prints expected value, prefixed by a test label number.
+# ================================================================
+
+# ============================================================
+# TEST 1: assign (assign.kw) + read (read.kw)
+# x = expr, @ x
+# ============================================================
+x = 42
+print @ x
+# expect: 42
+
+# ============================================================
+# TEST 2: print (print.kw)
+# ============================================================
+print 99
+# expect: 99
+
+# ============================================================
+# TEST 3: println (println.kw)
+# ============================================================
+println 77
+# expect: 77
+
+# ============================================================
+# TEST 4: printchar (printchar.kw)
+# ============================================================
+printchar 65
+printchar 10
+# expect: A (then newline)
+
+# ============================================================
+# TEST 5: abs (abs.kw)
+# ============================================================
+x = 0 9 s
+abs x
+print @ _abs
+# expect: 9
+
+x = 7
+abs x
+print @ _abs
+# expect: 7
+
+# ============================================================
+# TEST 6: sign (sign.kw)
+# ============================================================
+x = 0 5 s
+sign x
+print @ _sign
+# expect: -1
+
+x = 0
+sign x
+print @ _sign
+# expect: 0
+
+x = 7
+sign x
+print @ _sign
+# expect: 1
+
+# ============================================================
+# TEST 7: min (min.kw)
+# ============================================================
+a = 3
+b = 7
+min a b
+print @ _min
+# expect: 3
+
+# ============================================================
+# TEST 8: max (max.kw)
+# ============================================================
+a = 3
+b = 7
+max a b
+print @ _max
+# expect: 7
+
+# ============================================================
+# TEST 9: clamp (clamp.kw)
+# ============================================================
+lo = 0
+hi = 10
+
+v = 99
+clamp v lo hi
+print @ _clamp
+# expect: 10
+
+v = 0 5 s
+clamp v lo hi
+print @ _clamp
+# expect: 0
+
+v = 5
+clamp v lo hi
+print @ _clamp
+# expect: 5
+
+# ============================================================
+# TEST 10: swap (swap.kw)
+# ============================================================
+a = 1
+b = 2
+swap a b
+print @ a
+# expect: 2
+print @ b
+# expect: 1
+
+# ============================================================
+# TEST 11: if/endif (if.kw) — no else
+# ============================================================
+x = 5
+if @ x 0 G :
+    print 111
+endif
+# expect: 111
+
+# ============================================================
+# TEST 12: if/else/endif (if.kw)
+# ============================================================
+x = 0
+if @ x 0 G :
+    print 222
+else :
+    print 333
+endif
+# expect: 333
+
+# ============================================================
+# TEST 13: while/endwhile (while.kw)
+# ============================================================
+i = 3
+while @ i 0 G :
+    print @ i
+    i = @ i 1 s
+endwhile
+# expect: 3 2 1
+
+# ============================================================
+# TEST 14: natural syntax: ++ -- += -= *= /= (expanded by frontend)
+# ============================================================
+c = 10
+c++
+print @ c
+# expect: 11
+
+c--
+print @ c
+# expect: 10
+
+c += 5
+print @ c
+# expect: 15
+
+c -= 3
+print @ c
+# expect: 12
+
+c *= 2
+print @ c
+# expect: 24
+
+c /= 4
+print @ c
+# expect: 6
+
+# ============================================================
+# TEST 15: for loop (expanded by frontend)
+# ============================================================
+for idx from 1 to 4 :
+    print @ idx
+endfor
+# expect: 1 2 3
+
+# ============================================================
+# TEST 16: func/endfunc + call (func.kw, call.kw)
+# ============================================================
+func square :
+    U M Q
+endfunc
+
+5 call square P
+# expect: 25
+
+7 call square P
+# expect: 49
+
+# ============================================================
+# TEST 17: return (return.kw) inside func
+# ============================================================
+func double :
+    return U A
+endfunc
+
+6 call double P
+# expect: 12
+
+# ============================================================
+# TEST 18: recursive func
+# ============================================================
+func factorial :
+    if U 2 L :
+        V return 1
+    endif
+    U 1 s call factorial M Q
+endfunc
+
+5 call factorial P
+# expect: 120
+
+# ============================================================
+# TEST 19: assert (assert.kw) — should NOT halt
+# ============================================================
+x = 5
+assert @ x 0 G
+print @ x
+# expect: 5
+
+# ============================================================
+# TEST 20: newarray + lenarray (newarray.kw, lenarray.kw)
+# ============================================================
+newarray scores 5
+lenarray scores
+print @ _len
+# expect: 5
+
+# ============================================================
+# TEST 21: setarray + getarray (setarray.kw, getarray.kw)
+# ============================================================
+i = 0
+setarray scores i 10
+i++
+setarray scores i 20
+i++
+setarray scores i 30
+
+i = 0
+getarray scores i
+print @ _get
+# expect: 10
+
+i++
+getarray scores i
+print @ _get
+# expect: 20
+
+i++
+getarray scores i
+print @ _get
+# expect: 30
+
+# ============================================================
+# TEST 22: multiple independent arrays
+# ============================================================
+newarray arr1 3
+newarray arr2 3
+i = 0
+setarray arr1 i 100
+setarray arr2 i 200
+getarray arr1 i
+print @ _get
+# expect: 100
+getarray arr2 i
+print @ _get
+# expect: 200
+
+# ============================================================
+# TEST 23: match/case/endcase/endmatch (match.kw) single case
+# ============================================================
+x = 2
+match @ x :
+    case 2 :
+        print 888
+    endcase
+endmatch
+# expect: 888
+
+# ============================================================
+# TEST 24: match with multiple cases + else
+# ============================================================
+x = 3
+match @ x :
+    case 1 :
+        print 901
+    endcase
+    case 2 :
+        print 902
+    endcase
+    case 3 :
+        print 903
+    endcase
+    else :
+        print 909
+endmatch
+# expect: 903
+
+# ============================================================
+# TEST 25: memoize (memoize.kw)
+# ============================================================
+cache = 0
+memoize result = 7 7 M using cache
+print @ result
+# expect: 49
+
+# Second call: should use cache, same result
+memoize result = 999 using cache
+print @ result
+# expect: 49
+
+# ============================================================
+# TEST 26: pipeline (pipeline.kw)
+# ============================================================
+func addone :
+    1 A Q
+endfunc
+
+10 |> call addone
+P
+# expect: 11
+
+# ============================================================
+# TEST 27: typedef (typedef.kw) — compile-time only, no runtime output
+# only verify it doesn't crash
+# ============================================================
+typedef int myvar
+typedef pos pvar
+typedef neg nvar
+print 555
+# expect: 555
+
+# ============================================================
+# TEST 28: tassign (tassign.kw) — typed assign
+# ============================================================
+typedef pos tval
+tassign tval = 42
+print @ tval
+# expect: 42
+
+# ============================================================
+# TEST 29: own (own.kw) — ownership marker, compile-time only
+# ============================================================
+own myresource
+print 666
+# expect: 666
+
+# ============================================================
+# TEST 30: buse (buse.kw) — borrow-use
+# buse requires the variable to have ownership state = 1
+# ============================================================
+own borrowed_var
+borrowed_var = 10
+buse borrowed_var = @ borrowed_var 5 A
+print @ borrowed_var
+# expect: 15
+
+# ============================================================
+# TEST 31: move (move.kw)
+# ============================================================
+own src_var
+src_var = 77
+own dst_var
+move src_var to dst_var
+# move sets ownership flags at compile time
+# The runtime values aren't swapped by move itself—it's an
+# ownership transfer. Just verify no crash.
+print 777
+# expect: 777
+
+# ============================================================
+# TEST 32: tinfer + _tinfer_plus (tinfer.kw, tinfer_plus.kw)
+# ============================================================
+typedef pos pa
+typedef pos pb
+pa = 3
+pb = 4
+tinfer tc = @ pa @ pb A typed pa plus pb
+print @ tc
+# expect: 7
+
+# ============================================================
+# TEST 33: tinfer + _tinfer_times (tinfer.kw, tinfer_times.kw)
+# ============================================================
+pa = 5
+pb = 6
+tinfer te = @ pa @ pb M typed pa times pb
+print @ te
+# expect: 30
+
+# ============================================================
+# TEST 34: _bcheck (bcheck.kw) — direct invocation
+# _bcheck verifies that a variable has ownership state set (via own).
+# If ownership is NOT set, the program halts. If it IS set, execution
+# continues normally. Here we verify the passing case.
+# ============================================================
+own checked_var
+checked_var = 55
+_bcheck checked_var
+print @ checked_var
+# expect: 55
+
+# ============================================================
+# TEST 35: _typecheck (typecheck.kw) — direct invocation
+# _typecheck verifies that a typed variable has a valid type tag
+# (pos or neg). tassign already calls this internally; here we
+# call it directly after a typedef + assign to confirm it passes.
+# ============================================================
+typedef pos tv
+tassign tv = 88
+_typecheck tv
+print @ tv
+# expect: 88
+
+# ============================================================
+# TEST 36: input (input.kw)
+# Reads an integer from stdin, stores in variable.
+# The interpreter prints "Int: " as a prompt (from op_input_int).
+# Run the full suite with both inputs piped:
+#   printf "42\nA\n" | python3 src/alpha_p3.py --run tests/keywords/test_all_kw.eli2
+# ============================================================
+input n
+print @ n
+# expect output: Int: 42
+#   (prompt "Int: " printed by interpreter, then value 42 on next line)
+
+# ============================================================
+# TEST 37: inputchar (inputchar.kw)
+# Reads one character from stdin, stores its ASCII code.
+# The interpreter prints "Char: " as a prompt (from op_input_char).
+# Pipe the literal character (not its ASCII number):
+#   printf "42\nA\n" | python3 src/alpha_p3.py --run tests/keywords/test_all_kw.eli2
+# ============================================================
+inputchar ch
+print @ ch
+# expect output: Char: 65
+#   (prompt "Char: " printed by interpreter, then ASCII code 65 for 'A')
+
+# ============================================================
+# DONE
+# ============================================================
+halt

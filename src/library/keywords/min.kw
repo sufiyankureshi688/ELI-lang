@@ -1,0 +1,11 @@
+KEYWORD min
+
+SYNTAX
+min ?a ?b
+
+COMPILATION
+if @ ?a @ ?b L :
+    _min = @ ?a
+else :
+    _min = @ ?b
+endif

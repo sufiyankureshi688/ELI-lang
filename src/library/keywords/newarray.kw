@@ -1,0 +1,28 @@
+KEYWORD newarray
+
+# newarray ?name ?size
+#
+# Allocates a block of ?size+1 cells. The first cell (base) stores the
+# size. Data lives at base+1 .. base+size. The variable ?name holds the
+# base address. Arrays start at address 20000 and grow upward.
+# Use getarray/setarray to access elements, lenarray to read the size.
+#
+# EXAMPLE
+#   newarray scores 5
+#   i = 0
+#   setarray scores i 42
+#   getarray scores i
+#   print @ _get        # 42
+#   lenarray scores
+#   print @ _len        # 5
+
+SYNTAX
+newarray ?name ?size
+
+COMPILATION
+if 19999 F 0 E :
+    20000 19999 T
+endif
+?name = 19999 F
+?size @ ?name T
+19999 F ?size 1 A A 19999 T

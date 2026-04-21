@@ -1,0 +1,11 @@
+KEYWORD abs
+
+SYNTAX
+abs ?var
+
+COMPILATION
+if @ ?var 0 L :
+    _abs = 0 @ ?var s
+else :
+    _abs = @ ?var
+endif

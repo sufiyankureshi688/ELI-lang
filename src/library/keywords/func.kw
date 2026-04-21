@@ -1,0 +1,27 @@
+KEYWORD func
+
+# func ?name : **body endfunc
+#
+# Defines a named function. Emits a jump to skip the body,
+# places a label at the function entry point, emits the body,
+# then places the end label. The body uses Q (or 'return') to
+# return a value. Arguments are passed on the stack before calling.
+#
+# Functions can be called with: call ?name
+# Functions can be recursive: call the same name inside the body.
+#
+# EXAMPLE
+#   func square :
+#       U M Q
+#   endfunc
+#
+#   5 call square P   # prints 25
+
+SYNTAX
+func ?name : **body endfunc
+
+COMPILATION
+J __func_?name__end__
+[:__func_?name__]
+**body
+[:__func_?name__end__]

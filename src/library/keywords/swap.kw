@@ -1,0 +1,13 @@
+KEYWORD swap
+
+# swap ?a ?b
+# Exchanges the runtime values of variables a and b in place.
+# Uses a temporary memory location (_swap_tmp) to hold one value.
+
+SYNTAX
+swap ?a ?b
+
+COMPILATION
+_swap_tmp = @ ?a
+?a = @ ?b
+?b = @ _swap_tmp

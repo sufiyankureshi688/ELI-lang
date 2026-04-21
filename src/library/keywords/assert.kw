@@ -1,0 +1,15 @@
+KEYWORD assert
+
+# assert *cond
+#
+# Evaluates cond. If the result is zero (false), halts the program
+# immediately. If non-zero (true), execution continues normally.
+#
+# EXAMPLE
+#   assert @ x 0 G    # halts if x <= 0
+
+SYNTAX
+assert *cond
+
+COMPILATION
+*cond 2 N H

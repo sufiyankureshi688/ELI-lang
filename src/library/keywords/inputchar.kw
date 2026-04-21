@@ -1,0 +1,11 @@
+KEYWORD inputchar
+
+# inputchar ?name
+# Reads a single character from stdin and stores its ASCII code in name.
+# Expands to: name = K
+
+SYNTAX
+inputchar ?name
+
+COMPILATION
+?name = K

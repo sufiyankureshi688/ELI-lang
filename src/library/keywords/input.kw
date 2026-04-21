@@ -1,0 +1,11 @@
+KEYWORD input
+
+# input ?name
+# Reads an integer from stdin and stores it in name.
+# Expands to: name = I
+
+SYNTAX
+input ?name
+
+COMPILATION
+?name = I

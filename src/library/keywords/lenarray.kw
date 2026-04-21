@@ -1,0 +1,17 @@
+KEYWORD lenarray
+
+# lenarray ?arr
+#
+# Loads the length of the array into _len. The size is stored at the
+# base address (mem[base]) by newarray.
+#
+# EXAMPLE
+#   newarray scores 5
+#   lenarray scores
+#   print @ _len        # 5
+
+SYNTAX
+lenarray ?arr
+
+COMPILATION
+_len = @ ?arr F

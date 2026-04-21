@@ -1,0 +1,17 @@
+KEYWORD call
+
+# call ?name
+#
+# Calls the function defined with 'func ?name'. Expands to a C opcode
+# with the correct relative offset resolved at compile time via labels.
+# Push arguments onto the stack before calling. The function returns
+# one value on the stack via Q.
+#
+# EXAMPLE
+#   5 call square P   # push 5, call square, print result
+
+SYNTAX
+call ?name
+
+COMPILATION
+C __func_?name__

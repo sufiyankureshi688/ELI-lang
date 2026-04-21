@@ -1,0 +1,21 @@
+KEYWORD clamp
+
+# clamp ?val ?lo ?hi
+# Stores max(lo, min(val, hi)) in _clamp.
+# If val < lo  -> _clamp = lo
+# If val > hi  -> _clamp = hi
+# Otherwise    -> _clamp = val
+
+SYNTAX
+clamp ?val ?lo ?hi
+
+COMPILATION
+if @ ?val @ ?lo L :
+    _clamp = @ ?lo
+else :
+    if @ ?val @ ?hi G :
+        _clamp = @ ?hi
+    else :
+        _clamp = @ ?val
+    endif
+endif

@@ -1,0 +1,21 @@
+KEYWORD sign
+
+# sign ?var
+# Stores the sign of var in _sign:
+#   _sign = -1  if var < 0
+#   _sign =  0  if var == 0
+#   _sign =  1  if var > 0
+
+SYNTAX
+sign ?var
+
+COMPILATION
+if @ ?var 0 G :
+    _sign = 1
+else :
+    if @ ?var 0 L :
+        _sign = 0 1 s
+    else :
+        _sign = 0
+    endif
+endif

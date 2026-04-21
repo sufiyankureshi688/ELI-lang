@@ -1,0 +1,12 @@
+KEYWORD println
+
+# println *expr
+# Evaluates expr and prints the integer result followed by a newline.
+# Identical to print since P already appends a newline in ELI.
+# Use for semantic clarity when mixing with printchar/printstr output.
+
+SYNTAX
+println *expr
+
+COMPILATION
+*expr P

@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ELI — Emergent Language Interface</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #edf0f5;
+    --bg2:        #ffffff;
+    --bg3:        #e2e7f0;
+    --border:     #b0bbd0;
+    --border2:    #8a9ab8;
+    --blue:       #1a6bfa;
+    --blue-dark:  #0f4fd6;
+    --blue-light: #dce8ff;
+    --blue-glow:  rgba(26,107,250,0.15);
+    --green:      #0faa6e;
+    --green-bg:   #d4f5e8;
+    --amber:      #d97706;
+    --amber-bg:   #fef3c7;
+    --red:        #dc2626;
+    --red-bg:     #fee2e2;
+    --text:       #0a1628;
+    --text-2:     #243554;
+    --text-dim:   #445878;
+    --text-muted: #6b7fa8;
+    --font-mono:  'JetBrains Mono', monospace;
+    --font-hd:    'Syne', sans-serif;
+    --font-ui:    'DM Sans', sans-serif;
+    --r:          8px;
+    --shadow:     0 1px 4px rgba(15,28,53,0.08);
+    --shadow-md:  0 4px 16px rgba(15,28,53,0.10);
+    --shadow-b:   0 4px 20px rgba(26,107,250,0.20);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width:100%; height:100%; background:var(--bg); color:var(--text);
+    font-family:var(--font-ui); overflow:hidden; -webkit-font-smoothing:antialiased; }
+
+  /* HEADER */
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 20px; height:56px;
+    background:var(--bg2); border-bottom:1.5px solid var(--border);
+    box-shadow:var(--shadow); position:relative; z-index:10;
+  }
+  .logo { display:flex; align-items:center; gap:12px; }
+  .logo-mark {
+    width:36px; height:36px; background:var(--blue); border-radius:var(--r);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-hd); font-size:13px; font-weight:800; color:#fff;
+    box-shadow:var(--shadow-b);
+  }
+  .logo-text { font-family:var(--font-hd); font-size:18px; font-weight:800; color:var(--text); letter-spacing:1px; }
+  .logo-sub  { font-size:10px; color:var(--text-dim); letter-spacing:1.5px; font-family:var(--font-mono); font-weight:400; margin-top:1px; }
+
+  .mode-toggle {
+    display:flex; background:var(--bg3); border:1.5px solid var(--border);
+    border-radius:var(--r); padding:3px; gap:2px;
+  }
+  .mode-btn {
+    padding:6px 18px; font-family:var(--font-hd); font-size:11px; font-weight:700;
+    letter-spacing:1.5px; cursor:pointer; background:transparent; border:none;
+    color:var(--text-dim); border-radius:6px; transition:all .18s;
+  }
+  .mode-btn.active { background:var(--blue); color:#fff; box-shadow:var(--shadow-b); }
+  .mode-btn:not(.active):hover { background:var(--blue-light); color:var(--blue); }
+
+  .status-row { display:flex; align-items:center; gap:10px; }
+  #status-dot { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 0 3px var(--green-bg); }
+  #status-text { font-family:var(--font-mono); font-size:11px; color:var(--text-dim); font-weight:500; }
+  .version-badge {
+    font-family:var(--font-mono); font-size:10px; color:var(--blue);
+    background:var(--blue-light); border:1px solid rgba(26,107,250,0.2);
+    padding:3px 10px; border-radius:20px; font-weight:500;
+  }
+
+  /* WORKSPACE */
+  .workspace { display:grid; grid-template-columns:1fr 272px; height:calc(100vh - 56px); }
+
+  /* LEFT */
+  .left-col { display:grid; grid-template-rows:1fr 210px; border-right:1.5px solid var(--border); overflow:hidden; }
+
+  /* EDITOR */
+  .editor-pane { display:flex; flex-direction:column; border-bottom:1.5px solid var(--border); overflow:hidden; background:var(--bg2); }
+  .pane-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 16px; height:38px; background:var(--bg3);
+    border-bottom:1.5px solid var(--border); flex-shrink:0;
+  }
+  .pane-label { font-family:var(--font-hd); font-size:10px; font-weight:700; letter-spacing:2px; color:var(--text-2); }
+  .line-count { font-family:var(--font-mono); font-size:11px; color:var(--text-muted); }
+
+  .editor-wrap { flex:1; overflow:hidden; display:flex; }
+
+  .line-numbers {
+    width:48px; background:var(--bg3); border-right:1.5px solid var(--border);
+    padding:14px 0; overflow:hidden; flex-shrink:0; pointer-events:none;
+  }
+  .line-numbers span {
+    display:block; height:21px; line-height:21px; text-align:right;
+    padding-right:12px; font-family:var(--font-mono); font-size:12px;
+    color:var(--text-muted); font-weight:400;
+  }
+
+  #editor {
+    flex:1; background:var(--bg2); border:none; outline:none; resize:none;
+    padding:14px 18px; font-family:var(--font-mono); font-size:13px;
+    line-height:21px; color:var(--text); caret-color:var(--blue);
+    overflow-y:auto; white-space:pre; overflow-x:auto; tab-size:4;
+  }
+  #editor::selection { background:rgba(26,107,250,0.15); }
+  #editor::-webkit-scrollbar { width:6px; height:6px; }
+  #editor::-webkit-scrollbar-track { background:var(--bg3); }
+  #editor::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
+
+  /* OUTPUT */
+  .output-pane { display:flex; flex-direction:column; background:var(--bg2); overflow:hidden; }
+  .output-tabs {
+    display:flex; align-items:center; height:38px; background:var(--bg3);
+    border-bottom:1.5px solid var(--border); flex-shrink:0; padding:0 4px; gap:2px;
+  }
+  .tab {
+    padding:0 14px; height:28px; display:flex; align-items:center;
+    font-family:var(--font-hd); font-size:10px; font-weight:700; letter-spacing:1.5px;
+    color:var(--text-dim); cursor:pointer; border-radius:6px; transition:all .15s;
+  }
+  .tab.active { background:var(--bg2); color:var(--blue); box-shadow:var(--shadow); }
+  .tab:not(.active):hover { background:var(--blue-light); color:var(--blue); }
+  .tab-spacer { flex:1; }
+  .clear-btn {
+    padding:4px 12px; font-family:var(--font-mono); font-size:10px; font-weight:500;
+    color:var(--text-muted); cursor:pointer; background:none; border:none;
+    border-radius:4px; transition:all .15s;
+  }
+  .clear-btn:hover { background:var(--red-bg); color:var(--red); }
+
+  .output-body { flex:1; overflow-y:auto; padding:14px 18px; display:none; }
+  .output-body.visible { display:block; }
+  .output-body::-webkit-scrollbar { width:4px; }
+  .output-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  #output-console  { font-family:var(--font-mono); font-size:12.5px; line-height:1.75; color:#0a3d1f; white-space:pre-wrap; word-break:break-all; }
+  #output-compiled { font-family:var(--font-mono); font-size:11.5px; line-height:1.75; color:#4a2006; white-space:pre-wrap; word-break:break-all; }
+  .output-placeholder { color:var(--text-muted); font-style:italic; }
+  .err-line { color:var(--red); }
+  .sys-line { color:var(--text-muted); }
+
+  /* RIGHT PANEL */
+  .right-panel { display:flex; flex-direction:column; background:var(--bg2); overflow-y:auto; }
+  .right-panel::-webkit-scrollbar { width:4px; }
+  .right-panel::-webkit-scrollbar-thumb { background:var(--border); }
+
+  .panel-section { border-bottom:1.5px solid var(--border); padding:16px; }
+  .section-title {
+    font-family:var(--font-hd); font-size:10px; font-weight:700;
+    letter-spacing:2px; color:var(--text-2); margin-bottom:12px; text-transform:uppercase;
+  }
+
+  .run-btn {
+    width:100%; padding:13px; background:var(--blue); border:none; color:#fff;
+    font-family:var(--font-hd); font-size:12px; font-weight:700; letter-spacing:2px;
+    cursor:pointer; border-radius:var(--r); transition:all .2s;
+    box-shadow:var(--shadow-b); margin-bottom:8px;
+  }
+  .run-btn:hover:not(.loading) {
+    background:var(--blue-dark);
+    box-shadow:0 6px 24px rgba(26,107,250,0.30);
+    transform:translateY(-1px);
+  }
+  .run-btn:active { transform:translateY(0); }
+  .run-btn.loading { pointer-events:none; opacity:.75; }
+
+  .compile-btn {
+    width:100%; padding:10px; background:transparent;
+    border:1.5px solid var(--border2); color:var(--amber);
+    font-family:var(--font-hd); font-size:10px; font-weight:700; letter-spacing:1.5px;
+    cursor:pointer; border-radius:var(--r); transition:all .2s;
+  }
+  .compile-btn:hover:not(:disabled) { border-color:var(--amber); background:var(--amber-bg); }
+  .compile-btn:disabled { opacity:.35; pointer-events:none; }
+
+  .sample-list { display:flex; flex-direction:column; gap:4px; }
+  .sample-item {
+    padding:9px 11px; background:var(--bg3); border:1.5px solid var(--border);
+    border-radius:6px; cursor:pointer; transition:all .15s;
+    display:flex; align-items:center; gap:9px;
+  }
+  .sample-item:hover { border-color:var(--blue); background:var(--blue-light); transform:translateX(2px); }
+  .sample-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .sample-name { font-family:var(--font-mono); font-size:12px; color:var(--text-2); font-weight:500; }
+  .sample-tag { margin-left:auto; font-family:var(--font-mono); font-size:9px; font-weight:700; padding:2px 7px; border-radius:20px; }
+  .tag-raw   { background:var(--blue-light); color:var(--blue); }
+  .tag-sugar { background:var(--green-bg);   color:var(--green); }
+
+  .debug-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .debug-cell { background:var(--bg3); border:1.5px solid var(--border); border-radius:6px; padding:9px 11px; }
+  .debug-cell-label { font-family:var(--font-hd); font-size:9px; font-weight:700; letter-spacing:1.5px; color:var(--text-muted); margin-bottom:3px; }
+  .debug-cell-val { font-family:var(--font-mono); font-size:15px; font-weight:700; color:var(--blue); }
+
+  .opcode-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:3px; }
+  .opcode-chip {
+    background:var(--bg3); border:1.5px solid var(--border); border-radius:5px;
+    padding:5px 2px; text-align:center; cursor:default; transition:all .15s; position:relative;
+  }
+  .opcode-chip:hover { border-color:var(--blue); background:var(--blue-light); z-index:2; }
+  .opcode-chip:hover .opcode-tooltip { display:block; }
+  .opcode-sym { font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--blue); display:block; }
+  .opcode-nm  { font-family:var(--font-mono); font-size:8px; color:var(--text-muted); display:block; margin-top:1px; }
+  .opcode-tooltip {
+    display:none; position:absolute; bottom:calc(100% + 5px); left:50%; transform:translateX(-50%);
+    background:var(--text); color:#fff; padding:4px 9px; white-space:nowrap;
+    font-family:var(--font-mono); font-size:10px; z-index:100;
+    border-radius:4px; box-shadow:var(--shadow-md);
+  }
+
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .spinner {
+    display:inline-block; width:11px; height:11px;
+    border:2px solid rgba(255,255,255,.4); border-top-color:#fff;
+    border-radius:50%; animation:spin .6s linear infinite;
+    vertical-align:middle; margin-right:7px;
+  }
+
+  @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  header       { animation:fadeUp .35s ease both; }
+  .editor-pane { animation:fadeUp .4s .05s ease both; }
+  .output-pane { animation:fadeUp .4s .10s ease both; }
+  .right-panel { animation:fadeUp .4s .08s ease both; }
+
+  #conn-banner {
+    display:none; position:fixed; bottom:0; left:0; right:272px;
+    background:var(--red-bg); border-top:2px solid var(--red);
+    padding:8px 18px; font-family:var(--font-mono); font-size:11px;
+    color:var(--red); z-index:100; font-weight:500;
+  }
+  #conn-banner.visible { display:block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">ELI</div>
+    <div>
+      <div class="logo-text">ELI</div>
+      <div class="logo-sub">EMERGENT LANGUAGE INTERFACE</div>
+    </div>
+  </div>
+
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btn-raw"   onclick="setMode('raw')">RAW</button>
+    <button class="mode-btn"        id="btn-sugar" onclick="setMode('sugar')">SUGAR</button>
+  </div>
+
+  <div class="status-row">
+    <div id="status-dot"></div>
+    <span id="status-text">CONNECTING...</span>
+    <span class="version-badge">v10.0</span>
+  </div>
+</header>
+
+<div class="workspace">
+  <div class="left-col">
+
+    <div class="editor-pane">
+      <div class="pane-header">
+        <span class="pane-label">Source Editor</span>
+        <span class="line-count" id="line-count">0 lines</span>
+      </div>
+      <div class="editor-wrap">
+        <div class="line-numbers" id="line-numbers"></div>
+        <textarea id="editor" spellcheck="false" autocomplete="off"
+          autocorrect="off" autocapitalize="off"
+          placeholder="// Paste or write your ELI code here..."></textarea>
+      </div>
+    </div>
+
+    <div class="output-pane">
+      <div class="output-tabs">
+        <div class="tab active" id="tab-console"  onclick="switchTab('console')">CONSOLE</div>
+        <div class="tab"        id="tab-compiled" onclick="switchTab('compiled')">COMPILED</div>
+        <div class="tab-spacer"></div>
+        <button class="clear-btn" onclick="clearOutput()">Clear</button>
+      </div>
+      <div class="output-body visible" id="body-console">
+        <div id="output-console"><span class="output-placeholder">// Output will appear here after running your program</span></div>
+      </div>
+      <div class="output-body" id="body-compiled">
+        <div id="output-compiled"><span class="output-placeholder">// Compiled raw ELI tokens appear here (Sugar mode only)</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="right-panel">
+
+    <div class="panel-section">
+      <div class="section-title">Execute</div>
+      <button class="run-btn" id="run-btn" onclick="runCode()">
+        <span id="run-label">▶&nbsp;&nbsp;RUN</span>
+      </button>
+      <button class="compile-btn" id="compile-btn" onclick="compileOnly()" disabled>
+        ⬡&nbsp;&nbsp;COMPILE TO RAW ELI
+      </button>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">Session</div>
+      <div class="debug-grid">
+        <div class="debug-cell">
+          <div class="debug-cell-label">Runs</div>
+          <div class="debug-cell-val" id="stat-runs">0</div>
+        </div>
+        <div class="debug-cell">
+          <div class="debug-cell-label">Mode</div>
+          <div class="debug-cell-val" id="stat-mode" style="font-size:12px">RAW</div>
+        </div>
+        <div class="debug-cell">
+          <div class="debug-cell-label">Lines</div>
+          <div class="debug-cell-val" id="stat-lines">0</div>
+        </div>
+        <div class="debug-cell">
+          <div class="debug-cell-label">Last run</div>
+          <div class="debug-cell-val" id="stat-time" style="font-size:12px">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">Examples</div>
+      <div class="sample-list">
+        <div class="sample-item" onclick="loadSample('fib')">
+          <div class="sample-dot" style="background:var(--blue)"></div>
+          <span class="sample-name">Fibonacci</span>
+          <span class="sample-tag tag-raw">RAW</span>
+        </div>
+        <div class="sample-item" onclick="loadSample('factorial')">
+          <div class="sample-dot" style="background:var(--blue)"></div>
+          <span class="sample-name">Factorial</span>
+          <span class="sample-tag tag-raw">RAW</span>
+        </div>
+        <div class="sample-item" onclick="loadSample('countdown')">
+          <div class="sample-dot" style="background:var(--blue)"></div>
+          <span class="sample-name">Countdown</span>
+          <span class="sample-tag tag-raw">RAW</span>
+        </div>
+        <div class="sample-item" onclick="loadSample('hello')">
+          <div class="sample-dot" style="background:var(--blue)"></div>
+          <span class="sample-name">Hello World</span>
+          <span class="sample-tag tag-raw">RAW</span>
+        </div>
+        <div class="sample-item" onclick="loadSample('sugar_fib')">
+          <div class="sample-dot" style="background:var(--green)"></div>
+          <span class="sample-name">Bubble Sort</span>
+          <span class="sample-tag tag-sugar">SUGAR</span>
+        </div>
+        <div class="sample-item" onclick="loadSample('sugar_fact')">
+          <div class="sample-dot" style="background:var(--green)"></div>
+          <span class="sample-name">GCD Algorithm</span>
+          <span class="sample-tag tag-sugar">SUGAR</span>
+        </div>
+        <div class="sample-item" onclick="loadSample('sugar_array')">
+          <div class="sample-dot" style="background:var(--green)"></div>
+          <span class="sample-name">Primes 2–30</span>
+          <span class="sample-tag tag-sugar">SUGAR</span>
+        </div>
+        <div class="sample-item" onclick="loadSample('sugar_match')">
+          <div class="sample-dot" style="background:var(--green)"></div>
+          <span class="sample-name">Powers of 2</span>
+          <span class="sample-tag tag-sugar">SUGAR</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-title">Opcode Reference</div>
+      <div class="opcode-grid" id="opcode-grid"></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="conn-banner">
+  ⚠&nbsp;&nbsp;Cannot reach server — run <code>python3 server.py</code> first
+</div>
+
+<script>
+let mode = 'raw', runs = 0;
+
+const OPCODES = [
+  ['A','add'],['s','sub'],['M','mul'],['D','div'],['X','mod'],
+  ['E','eq'],['G','gt'],['L','lt'],
+  ['!','not'],['&','and'],['|','or'],['^','xor'],['~','bnot'],['<','shl'],['>','shr'],
+  ['U','dup'],['W','swap'],['V','drop'],['Y','over'],['R','rot'],
+  ['T','store'],['F','load'],['@','ptr+'],['#','ptr-'],['B','rbuf'],['S','sbuf'],
+  ['J','jump'],['Z','jmpZ'],['N','jmpN'],['H','halt'],
+  ['C','call'],['Q','ret'],
+  ['P','pint'],['O','pchar'],['I','iint'],['K','ichar'],
+  ['$','CAS'],['%','TAS'],['=','fence'],
+  ['a','mkArr'],['l','len'],['g','get'],
+];
+
+const SAMPLES = {
+  fib: { mode:'raw', code:
+`0 1000 T 1 1001 T 10 1002 T
+1002 F 0 G 23 Z
+1001 F P
+1000 F 1001 F A
+1001 F 1000 T
+1001 T
+1002 F 1 s 1002 T
+-27 J
+H` },
+  factorial: { mode:'raw', code:
+`5 1000 T 1 1001 T 1 1002 T
+1002 F 1000 F G ! 16 Z
+1001 F 1002 F M 1001 T
+1002 F 1 A 1002 T
+-22 J
+1001 F P
+H` },
+  countdown: { mode:'raw', code:
+`10 1000 T
+1000 F 0 G 12 Z
+1000 F P
+1000 F 1 s 1000 T
+-16 J
+H` },
+  hello: { mode:'raw', code:
+`72 O
+69 O
+76 O
+76 O
+79 O
+10 O
+H` },
+  sugar_fib: { mode:'sugar', code:
+`# Bubble Sort — sort 6 numbers in-place
+newarray arr 6
+i = 0
+setarray arr i 64
+i = 1
+setarray arr i 25
+i = 2
+setarray arr i 12
+i = 3
+setarray arr i 22
+i = 4
+setarray arr i 11
+i = 5
+setarray arr i 90
+
+pass = 0
+while @ pass 5 L :
+    j = 0
+    while @ j 4 L :
+        getarray arr j
+        a = @ _get
+        k = @ j 1 A
+        getarray arr k
+        b = @ _get
+        if @ a @ b G :
+            setarray arr j @ b
+            setarray arr k @ a
+        endif
+        j++
+    endwhile
+    pass++
+endwhile
+
+for idx from 0 to 6 :
+    getarray arr idx
+    print @ _get
+endfor
+
+halt` },
+  sugar_fact: { mode:'sugar', code:
+`# GCD — Euclidean algorithm (iterative)
+func gcd :
+    b_val = U V
+    a_val = U V
+    while @ b_val 0 E ! :
+        temp = @ b_val
+        b_val = @ a_val @ b_val X
+        a_val = @ temp
+    endwhile
+    return @ a_val
+endfunc
+
+# gcd(48, 18) = 6
+48 18 call gcd
+print U V
+
+# gcd(100, 75) = 25
+100 75 call gcd
+print U V
+
+# gcd(56, 98) = 14
+56 98 call gcd
+print U V
+
+halt` },
+  sugar_array: { mode:'sugar', code:
+`# Primes from 2 to 30 — trial division
+func is_prime :
+    n = U V
+    if @ n 2 L :
+        return 0
+    endif
+    d = 2
+    while @ d @ n L :
+        if @ n @ d X 0 E :
+            return 0
+        endif
+        d++
+    endwhile
+    return 1
+endfunc
+
+for n from 2 to 31 :
+    @ n call is_prime
+    res = U V
+    if @ res 1 E :
+        print @ n
+    endif
+endfor
+
+halt` },
+  sugar_match: { mode:'sugar', code:
+`# Powers of 2 (2^0 to 2^9) + sum
+func power :
+    exp = U V
+    base = U V
+    if @ exp 0 E :
+        return 1
+    endif
+    @ base @ exp 1 s call power
+    @ base M Q
+endfunc
+
+total = 0
+for e from 0 to 10 :
+    2 @ e call power
+    val = U V
+    total += @ val
+    print @ val
+endfor
+
+print @ total
+
+halt` },
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildOpcodeGrid();
+  checkServer();
+  const ed = document.getElementById('editor');
+  ed.addEventListener('input', updateLineNumbers);
+  ed.addEventListener('scroll', () => {
+    document.getElementById('line-numbers').scrollTop = ed.scrollTop;
+  });
+  ed.addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = ed.selectionStart;
+      ed.value = ed.value.substring(0, s) + '    ' + ed.value.substring(ed.selectionEnd);
+      ed.selectionStart = ed.selectionEnd = s + 4;
+      updateLineNumbers();
+    }
+  });
+  loadSample('fib');
+});
+
+function buildOpcodeGrid() {
+  const g = document.getElementById('opcode-grid');
+  OPCODES.forEach(([sym, name]) => {
+    g.innerHTML += `<div class="opcode-chip"><span class="opcode-sym">${sym}</span><span class="opcode-nm">${name}</span><div class="opcode-tooltip">${sym} — ${name}</div></div>`;
+  });
+}
+
+function updateLineNumbers() {
+  const ed = document.getElementById('editor');
+  const n = ed.value.split('\n').length;
+  document.getElementById('line-count').textContent = `${n} line${n!==1?'s':''}`;
+  document.getElementById('stat-lines').textContent = n;
+  let h = '';
+  for (let i = 1; i <= n; i++) h += `<span>${i}</span>`;
+  document.getElementById('line-numbers').innerHTML = h;
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btn-raw').classList.toggle('active', m==='raw');
+  document.getElementById('btn-sugar').classList.toggle('active', m==='sugar');
+  document.getElementById('compile-btn').disabled = (m !== 'sugar');
+  document.getElementById('stat-mode').textContent = m.toUpperCase();
+}
+
+function switchTab(tab) {
+  ['console','compiled'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('body-'+t).classList.toggle('visible', t===tab);
+  });
+}
+
+function loadSample(key) {
+  const s = SAMPLES[key]; if (!s) return;
+  document.getElementById('editor').value = s.code.trim();
+  setMode(s.mode);
+  updateLineNumbers();
+}
+
+async function runCode() {
+  const code = document.getElementById('editor').value.trim();
+  if (!code) return;
+  setRunning(true);
+  const t0 = performance.now();
+  try {
+    const res = await fetch('http://localhost:8080/run', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ code, mode, action:'run' })
+    });
+    const data = await res.json();
+    const ms = ((performance.now()-t0)/1000).toFixed(3);
+
+    let html = '';
+    if (data.errors && data.errors.trim())
+      html += `<span class="err-line">${esc(data.errors.trim())}\n\n</span>`;
+    if (data.output && data.output.trim())
+      html += esc(data.output);
+    if (!html.trim())
+      html = '<span class="sys-line">Program produced no output.</span>\n';
+    html += `\n<span class="sys-line">Finished in ${ms}s</span>`;
+
+    document.getElementById('output-console').innerHTML = html;
+    if (data.compiled)
+      document.getElementById('output-compiled').textContent = data.compiled;
+    switchTab('console');
+
+    runs++;
+    document.getElementById('stat-runs').textContent = runs;
+    document.getElementById('stat-time').textContent = ms + 's';
+    setStatus('READY', 'ok');
+    hideBanner();
+  } catch(e) {
+    document.getElementById('output-console').innerHTML =
+      `<span class="err-line">Cannot reach server.\nRun python3 server.py first.\n\n${esc(e.message)}</span>`;
+    switchTab('console');
+    setStatus('SERVER OFFLINE', 'err');
+    showBanner();
+  } finally { setRunning(false); }
+}
+
+async function compileOnly() {
+  const code = document.getElementById('editor').value.trim();
+  if (!code) return;
+  setRunning(true);
+  try {
+    const res = await fetch('http://localhost:8080/run', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ code, mode:'sugar', action:'compile' })
+    });
+    const data = await res.json();
+    if (data.errors && data.errors.trim()) {
+      document.getElementById('output-console').innerHTML =
+        `<span class="err-line">COMPILE ERROR:\n${esc(data.errors.trim())}</span>`;
+      switchTab('console');
+    } else {
+      document.getElementById('output-compiled').textContent = data.compiled || '';
+      switchTab('compiled');
+    }
+    hideBanner();
+  } catch(e) {
+    document.getElementById('output-console').innerHTML =
+      `<span class="err-line">Cannot reach server.\n${esc(e.message)}</span>`;
+    switchTab('console');
+    showBanner();
+  } finally { setRunning(false); }
+}
+
+function clearOutput() {
+  document.getElementById('output-console').innerHTML  = '<span class="output-placeholder">// Cleared</span>';
+  document.getElementById('output-compiled').innerHTML = '<span class="output-placeholder">// No compiled output</span>';
+}
+
+function setRunning(yes) {
+  document.getElementById('run-btn').classList.toggle('loading', yes);
+  document.getElementById('run-label').innerHTML = yes
+    ? '<span class="spinner"></span>Running...' : '▶&nbsp;&nbsp;RUN';
+}
+
+function setStatus(msg, state) {
+  document.getElementById('status-text').textContent = msg;
+  const dot = document.getElementById('status-dot');
+  const c = state==='err' ? 'var(--red)' : state==='ok' ? 'var(--green)' : 'var(--blue)';
+  dot.style.background = c;
+  dot.style.boxShadow  = `0 0 0 3px ${c.replace('var(','').replace(')','').trim()}22`;
+}
+
+function showBanner() { document.getElementById('conn-banner').classList.add('visible'); }
+function hideBanner()  { document.getElementById('conn-banner').classList.remove('visible'); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+async function checkServer() {
+  try {
+    const r = await fetch('http://localhost:8080/health');
+    r.ok ? setStatus('SERVER ONLINE','ok') : (setStatus('SERVER ERROR','err'), showBanner());
+  } catch { setStatus('SERVER OFFLINE','err'); showBanner(); }
+}
+</script>
+</body>
+</html>

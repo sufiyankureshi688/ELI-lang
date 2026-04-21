@@ -1,0 +1,11 @@
+KEYWORD printchar
+
+# printchar *expr
+# Evaluates expr as an ASCII code and prints the corresponding character.
+# Expands to: expr O
+
+SYNTAX
+printchar *expr
+
+COMPILATION
+*expr O

@@ -1,8 +1,10 @@
-# *val |> *func  ->  *func *val
-# Pipes value into function. Chains naturally.
+# *val |> *func  ->  *val *func
+# Pipes value onto the stack, then applies func. Chains naturally.
+# e.g.  10 |> U M       ->  10 U M         (square: 100)
+#        5 |> call square ->  5 call square  (calls square with 5)
 
 SYNTAX
 *val |> *func
 
 COMPILATION
-*func *val
+*val *func

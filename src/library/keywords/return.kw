@@ -1,0 +1,26 @@
+KEYWORD return
+
+# return *expr
+#
+# Evaluates expr, leaves the result on the stack, and returns from the
+# current function. Sugar for: expr Q
+# Must be used inside a func...endfunc block.
+#
+# EXAMPLE
+#   func square :
+#       return U M
+#   endfunc
+#
+#   func max2 :
+#       if @ a @ b G :
+#           return @ a
+#       else :
+#           return @ b
+#       endif
+#   endfunc
+
+SYNTAX
+return *expr
+
+COMPILATION
+*expr Q

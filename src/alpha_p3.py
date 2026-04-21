@@ -606,7 +606,7 @@ def tokenize_source(text: str) -> List[str]:
                 j += 1
             j += 1; tokens.append(text[i:j]); i = j; continue
         two = text[i:i+2]
-        if two in (':=','+=','-=','*=','->','==','!=','<=','>=','&&','||','++','--','|>'):
+        if two in (':=','+=','-=','*=','/=','->','==','!=','<=','>=','&&','||','++','--','|>'):
             tokens.append(two); i += 2; continue
         if c.isdigit() or (c=='-' and i+1<n and text[i+1].isdigit() and (not tokens or tokens[-1] in ('=',':','(','\n'))):
             pass  # fall through to number handler below

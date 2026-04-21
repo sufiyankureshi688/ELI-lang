@@ -1,0 +1,17 @@
+KEYWORD setarray
+
+# setarray ?arr ?idx *val
+#
+# Stores val at arr[idx]. Data starts at base+1, so the actual
+# memory address is @ ?arr + ?idx + 1.
+#
+# EXAMPLE
+#   newarray scores 5
+#   i = 0
+#   setarray scores i 42
+
+SYNTAX
+setarray ?arr ?idx *val
+
+COMPILATION
+*val @ ?arr @ ?idx 1 A A T
