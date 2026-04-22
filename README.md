@@ -1,40 +1,84 @@
-# ELI - Emergent Language Interface
+# ELI — Emergent Language Interface
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Tests](https://img.shields.io/badge/tests-15%20passing-brightgreen.svg)]()
 [![Coverage](https://img.shields.io/badge/coverage-100%25-green.svg)]()
 
-> **ELI** (Emergent Language Interface) is a minimalist stack-based programming language designed for AI code generation. It features direct opcode execution, relative addressing, and native ARM64 compilation—all without preprocessing.
+> **ELI** (Emergent Language Interface) is a minimalist stack-based programming language designed for AI code generation. It features direct opcode execution, relative addressing, native ARM64 compilation, and a macro system that lets you extend the language with readable keywords — all without preprocessing.
+
+---
+
+## Table of Contents
+
+- [Design Philosophy](#-design-philosophy)
+- [Two Layers: ELI and ELI2](#-two-layers-eli-and-eli2)
+- [Quick Start](#-quick-start)
+- [ELI Bytecode Reference](#-eli-bytecode-reference)
+- [ELI2 Keyword Reference](#-eli2-keyword-reference)
+- [Writing Your Own Keywords](#-writing-your-own-keywords)
+- [Architecture](#-architecture)
+- [Test Suite](#-test-suite)
+- [Web Playground](#-web-playground)
+- [Benchmarks](#-benchmarks)
+- [Contributing](#-contributing)
+
+---
 
 ## 🎯 Design Philosophy
 
 ELI is **AI-first, not human-first**:
 
-- **No Preprocessing**: Direct opcode execution with no label resolution or symbol tables
-- **Relative Addressing**: All jumps use relative offsets for position-independent code
-- **Zero Collisions**: 42 unique single-character opcodes with no conflicts
-- **Machine-Optimized**: Designed for LLM code generation, not human readability
-- **Dual Execution**: Identical semantics in both VM interpreter and native compiler
-- **Minimal Syntax**: Opcodes, literals, and whitespace—nothing else
+- **No Preprocessing** — Direct opcode execution. No label resolution or symbol tables in the core VM.
+- **Relative Addressing** — All jumps use relative token offsets, making code position-independent and trivial for an LLM to emit.
+- **Zero Collisions** — 42 unique single-character opcodes with no ambiguity.
+- **Dual Execution** — Identical semantics in both the VM interpreter and the native ARM64 compiler, verified by test suite.
+- **Extensible by Design** — The ELI2 keyword system lets you add readable syntax via `.kw` files without touching the core.
+- **Self-Hosting** — ELI is expressive enough to implement its own interpreter (`extensions/interpreter.eli`).
 
-### Why Stack-Based?
+---
 
-- **Simplicity**: No register allocation, no variable naming
-- **Composability**: Operations naturally chain together
-- **AI-Friendly**: Easy for models to generate correct programs
-- **Portability**: Stack abstraction works across all architectures
+## 🗂 Two Layers: ELI and ELI2
 
-## ✨ Key Features
+ELI has two distinct layers that you can use independently or together.
 
-- **🔢 42 Unique Opcodes** - Complete instruction set, zero collisions
-- **🚫 No Preprocessing** - Direct execution, no symbol tables or labels
-- **⚡ Dual Execution** - VM interpreter + native ARM64 compiler
-- **📍 Relative Addressing** - Position-independent code
-- **🤖 AI-Optimized** - Simplified target for LLMs
-- **✅ Production-Ready** - 100% test coverage, verified equivalence
-- **🔒 Type-Safe** - Strict type checking on I/O operations
-- **💾 Memory-Safe** - Deep copy semantics for arrays/buffers
+### Layer 1: ELI (`.eli`) — Raw Bytecode
+
+Pure stack machine opcodes, numbers, and whitespace. This is what the VM and compiler consume directly. No labels, no variables, no syntax sugar.
+
+```eli
+# Fibonacci: first 10 numbers
+0 1000 T  1 1001 T  10 1002 T
+1002 F 0 G 23 Z
+1001 F P
+1000 F 1001 F A 1001 F 1000 T 1001 T
+1002 F 1 s 1002 T
+-27 J
+H
+```
+
+### Layer 2: ELI2 (`.eli2`) — Keyword Syntax
+
+A macro layer that compiles to raw ELI. Variables, functions, control flow, and other constructs are all expressed as `.kw` keyword files that expand at compile time.
+
+```eli2
+# Same Fibonacci in ELI2
+a = 0
+b = 1
+count = 10
+
+while count 0 G :
+    print @ b
+    temp = @ a @ b A
+    a = @ b
+    b = @ temp
+    count = @ count 1 s
+endwhile
+```
+
+Both produce the same ELI bytecode and run identically on the VM and native compiler.
+
+---
 
 ## 🚀 Quick Start
 
@@ -45,478 +89,538 @@ git clone https://github.com/sufiyankureshi688/ELI-lang.git
 cd ELI-lang
 ```
 
-No dependencies required! Uses Python 3.8+ standard library only.
+No dependencies required — Python 3.8+ standard library only.
 
-### Run with Interpreter
+### Run ELI with the Interpreter
 
 ```bash
-# Run a program file
-python3 src/alpha_i2.py tests/test_fibonacci.eli
+python3 src/alpha_i2.py tests/bytecode/test_fibonacci.eli
+```
 
+### Run ELI2 with the Frontend
+
+```bash
+python3 src/alpha_p3.py --run tests/keywords/test_all_kw.eli2
 ```
 
 ### Compile to Native Binary (ARM64 macOS)
 
 ```bash
-# Compile
-python3 src/alpha_c2.py tests/test_fibonacci.eli -a arm64
-
-# Run
+python3 src/alpha_c2.py tests/bytecode/test_fibonacci.eli -a arm64
 ./tests/test_fibonacci
 ```
 
-## 📖 Complete Opcode Reference
+### Launch the Web Playground
 
-ELI has **42 unique opcodes** organized into 10 categories:
+```bash
+cd frontend
+python3 server.py
+# Open http://localhost:5000 in your browser
+```
 
-### Arithmetic (7 opcodes)
+---
+
+## 📖 ELI Bytecode Reference
+
+ELI has **42 unique opcodes** — each is a single character. Stack diagrams use the convention `before → after`.
+
+### Arithmetic
 
 | Opcode | Stack Effect | Description |
-|--------|--------------|-------------|
-| `A` | `a b → a+b` | Add two numbers |
-| `s` | `a b → a-b` | Subtract (b from a) |
+|--------|-------------|-------------|
+| `A` | `a b → a+b` | Add |
+| `s` | `a b → a-b` | Subtract (a minus b) |
 | `M` | `a b → a*b` | Multiply |
-| `D` | `a b → a/b` | Integer division |
-| `X` | `a b → a%b` | Modulo (remainder) |
-| `a` | `v1..vN N → array` | Create array from N values |
-| `l` | `array → len` | Array length |
-| `g` | `array idx → value` | Get array element |
+| `D` | `a b → a//b` | Integer division |
+| `X` | `a b → a%b` | Modulo |
+| `a` | `v1..vN N → [array]` | Build array from N stack values |
+| `l` | `[array] → len` | Array length |
+| `g` | `[array] idx → value` | Get array element by index |
 
-### Comparison (3 opcodes)
+### Comparison
 
 | Opcode | Stack Effect | Description |
-|--------|--------------|-------------|
+|--------|-------------|-------------|
 | `E` | `a b → (a==b)?1:0` | Equal |
 | `G` | `a b → (a>b)?1:0` | Greater than |
 | `L` | `a b → (a<b)?1:0` | Less than |
 
-### Boolean Logic (4 opcodes)
+### Boolean & Bitwise
 
 | Opcode | Stack Effect | Description |
-|--------|--------------|-------------|
+|--------|-------------|-------------|
 | `!` | `a → !a` | Logical NOT |
-| `&` | `a b → a&b` | Logical AND |
-| `|` | `a b → a|b` | Logical OR |
-| `^` | `a b → a^b` | Logical XOR |
-
-### Bitwise Operations (3 opcodes)
-
-| Opcode | Stack Effect | Description |
-|--------|--------------|-------------|
+| `&` | `a b → a&b` | Bitwise AND |
+| `\|` | `a b → a\|b` | Bitwise OR |
+| `^` | `a b → a^b` | Bitwise XOR |
 | `~` | `a → ~a` | Bitwise NOT |
 | `<` | `a b → a<<b` | Left shift |
 | `>` | `a b → a>>b` | Right shift |
 
-### Stack Manipulation (5 opcodes)
+### Stack Manipulation
 
 | Opcode | Stack Effect | Description |
-|--------|--------------|-------------|
+|--------|-------------|-------------|
 | `U` | `a → a a` | Duplicate top |
 | `W` | `a b → b a` | Swap top two |
 | `V` | `a →` | Drop top |
-| `Y` | `a b → a b a` | Over (copy 2nd to top) |
+| `Y` | `a b → a b a` | Over — copy second to top |
 | `R` | `a b c → b c a` | Rotate top 3 |
 
-### Memory Operations (6 opcodes)
+### Memory
 
 | Opcode | Stack Effect | Description |
-|--------|--------------|-------------|
+|--------|-------------|-------------|
 | `T` | `val addr →` | Store value at address |
 | `F` | `addr → val` | Load value from address |
 | `@` | `ptr offset → ptr+offset` | Pointer addition |
 | `#` | `ptr offset → ptr-offset` | Pointer subtraction |
-| `B` | `addr → array` | Read buffer (array) from address |
-| `S` | `array addr →` | Store buffer at address |
+| `B` | `addr → [array]` | Read buffer (array) from address |
+| `S` | `[array] addr →` | Write buffer to address |
 
-### Control Flow (4 opcodes)
+Memory is a flat dictionary (`address → value`). Uninitialized addresses return `0`. Buffer ops (`B`/`S`) use deep-copy semantics to prevent aliasing.
+
+### Control Flow
 
 | Opcode | Stack Effect | Description |
-|--------|--------------|-------------|
-| `J` | `offset →` | Jump by relative offset |
+|--------|-------------|-------------|
+| `J` | `offset →` | Unconditional jump by relative offset |
 | `Z` | `offset val →` | Jump if val == 0 |
 | `N` | `offset val →` | Jump if val != 0 |
-| `H` | ` →` | Halt program |
+| `H` | `→` | Halt program |
 
-**Note**: All jumps use **relative offsets**, not absolute positions or labels.
+**All jumps use relative token offsets**, not absolute positions or labels. Offset `+1` means "next token", `-1` means "one token back". The VM applies the offset then increments PC by 1, so the effective jump target is `pc + offset`.
 
-### Function Calls (2 opcodes)
-
-| Opcode | Stack Effect | Description |
-|--------|--------------|-------------|
-| `C` | `offset →` | Call function at relative offset |
-| `Q` | `retval →` | Return from function with value |
-
-### I/O Operations (4 opcodes)
+### Functions
 
 | Opcode | Stack Effect | Description |
-|--------|--------------|-------------|
-| `P` | `n →` | Print integer |
-| `O` | `ascii →` | Print character (ASCII/Unicode) |
-| `I` | ` → n` | Input integer |
-| `K` | ` → ascii` | Input character |
+|--------|-------------|-------------|
+| `C` | `offset →` | Call function at relative offset; saves return address |
+| `Q` | `retval →` | Return from function; restores caller's stack with retval on top |
 
-### Atomic Operations (3 opcodes)
+```eli
+# Square function example
+5 7 C P    # push 5, call function 7 tokens ahead, print result
+7 7 C P    # push 7, call again
+H
+U M Q      # function body: dup, mul, return
+```
+
+Output: `25`, `49`
+
+### I/O
 
 | Opcode | Stack Effect | Description |
-|--------|--------------|-------------|
+|--------|-------------|-------------|
+| `P` | `n →` | Print integer (requires int type) |
+| `O` | `ascii →` | Print character (Unicode code point 0–0x10FFFF) |
+| `I` | `→ n` | Read integer from stdin |
+| `K` | `→ ascii` | Read one character from stdin (buffered) |
+
+### Atomics
+
+| Opcode | Stack Effect | Description |
+|--------|-------------|-------------|
 | `$` | `new old addr → success` | Compare-and-swap |
-| `%` | `addr → oldval` | Test-and-set |
-| `=` | ` →` | Memory fence |
+| `%` | `addr → oldval` | Test-and-set (sets to 1) |
+| `=` | `→` | Memory fence (no-op in the VM) |
 
-## 📊 Example Programs
+---
 
-### Hello World
+## 🗣 ELI2 Keyword Reference
 
-```eli
-72 O 101 O 108 O 108 O 111 O 10 O H
+ELI2 is the high-level syntax layer. The frontend (`alpha_p3.py`) loads `.kw` files from `src/library/keywords/` and expands them into raw ELI bytecode.
+
+### Variables
+
+```eli2
+x = 42          # assign: allocates an address for x, stores 42
+print @ x       # @ x loads x's address; F loads the value
 ```
 
-Output: `Hello\n`
+Variables are allocated at compile time. Each unique name gets a unique memory address. `@ x` emits the address of `x`; combine with `F` (load) or `T` (store) as needed.
 
-### Fibonacci Sequence (First 10)
+### Control Flow
 
-```eli
-# Initialize: a=0, b=1, count=10
-0 1000 T          # a = 0 (at address 1000)
-1 1001 T          # b = 1 (at address 1001)
-10 1002 T         # count = 10 (at address 1002)
+```eli2
+# if / else / endif
+if @ x 0 G :
+    print 100
+else :
+    print 0
+endif
 
-# Loop: while count > 0
-1002 F 0 G 23 Z   # if count <= 0, jump to halt
-1001 F P          # print b
-1000 F 1001 F A   # temp = a + b
-1001 F 1000 T     # a = b
-1001 T            # b = temp
-1002 F 1 s 1002 T # count--
--27 J             # jump back to loop start
+# while loop
+while @ count 0 G :
+    print @ count
+    count = @ count 1 s
+endwhile
 
-H                 # halt
+# match (pattern matching — compiles to nested if/else)
+match @ value :
+    case 1 : print 111 endcase
+    case 2 : print 222 endcase
+    case 3 : print 333 endcase
+    else   : print 999
+endmatch
 ```
 
-Output: `1 1 2 3 5 8 13 21 34 55`
+### Functions
 
-### Square Function
+```eli2
+# Define
+func square :
+    U M Q
+endfunc
 
-```eli
-# Square function using CALL/RETURN
-5 7 C P           # square(5), print result
-7 7 C P           # square(7), print result
-H                 # halt
-
-# Function (at position 9)
-U M Q             # DUP, MUL, RETURN
+# Call
+5 call square
+print @ _result
 ```
 
-Output: `25\n49`
+Functions are defined with `func`/`endfunc` and called with `call`. Arguments are passed on the stack before the call. The function returns one value via `Q`. Recursive calls work naturally.
+
+```eli2
+# Recursive factorial
+func factorial :
+    U 2 L 4 Z     # if arg < 2, skip base case
+    V 1 Q         # base case: return 1
+    U 1 s         # arg - 1
+    -12 C         # recursive call
+    M Q           # arg * factorial(arg-1), return
+endfunc
+```
+
+### Arrays
+
+```eli2
+newarray scores 5       # allocate array of size 5
+
+i = 0
+setarray scores i 42    # scores[0] = 42
+getarray scores i       # push scores[0] onto stack
+print @ _get            # → 42
+
+lenarray scores
+print @ _len            # → 5
+```
+
+Array base addresses start at 20000 and grow upward. `newarray` tracks the next free address automatically.
+
+### Math Utilities
+
+```eli2
+abs x               # _abs = |x|
+sign x              # _sign = -1, 0, or 1
+min a b             # _min = smaller of a, b
+max a b             # _max = larger of a, b
+clamp v lo hi       # _clamp = v clamped to [lo, hi]
+```
+
+Results land in auto-named variables (`_abs`, `_sign`, `_min`, `_max`, `_clamp`).
+
+### I/O
+
+```eli2
+print @ x           # print integer (no newline)
+println @ x         # print integer with newline
+printchar 65        # print ASCII character ('A')
+input n             # read integer from stdin into n
+inputchar c         # read one character into c
+```
+
+### Type System
+
+```eli2
+typedef myint       # declare type alias
+tassign x myint     # associate x with type myint
+typecheck x myint   # assert x is myint (halts if mismatch)
+tinfer x            # infer type of x from usage context
+```
+
+Types are tracked at compile time via the persistent compile-time state dictionary. The VM itself is untyped — this is a lightweight optional layer.
+
+### Advanced
+
+```eli2
+# Pipeline operator — chain operations readably
+10 |> U M           # 10 U M → 100 (square)
+5 |> call square    # 5 call square
+
+# Memoize — cache expensive computations
+memoize result = @ x @ x M using cache
+
+# Swap two variables in place
+swap a b
+
+# Offset a pointer variable
+move ptr 10         # ptr = ptr + 10
+```
+
+### Full Keyword Index
+
+| Keyword | File | Description |
+|---------|------|-------------|
+| `?name = *expr` | assign.kw | Variable assignment |
+| `@ ?name` | read.kw | Variable read (load address) |
+| `print` | print.kw | Print integer |
+| `println` | println.kw | Print integer + newline |
+| `printchar` | printchar.kw | Print character |
+| `input` | input.kw | Read integer from stdin |
+| `inputchar` | inputchar.kw | Read character from stdin |
+| `if`/`else`/`endif` | if.kw | Conditional branch |
+| `while`/`endwhile` | while.kw | Loop |
+| `match`/`case`/`endmatch` | match.kw | Pattern matching |
+| `func`/`endfunc` | func.kw | Function definition |
+| `call` | call.kw | Function call |
+| `return` | return.kw | Early return from function |
+| `newarray` | newarray.kw | Allocate array |
+| `getarray` | getarray.kw | Read array element |
+| `setarray` | setarray.kw | Write array element |
+| `lenarray` | lenarray.kw | Array length |
+| `abs` | abs.kw | Absolute value |
+| `sign` | sign.kw | Sign (-1, 0, 1) |
+| `min` | min.kw | Minimum of two values |
+| `max` | max.kw | Maximum of two values |
+| `clamp` | clamp.kw | Clamp to range |
+| `swap` | swap.kw | Swap two variables |
+| `move` | move.kw | Offset a pointer variable |
+| `assert` | assert.kw | Runtime assertion |
+| `memoize` | memoize.kw | Cache computed result |
+| `\|>` | pipeline.kw | Pipeline operator |
+| `typedef` | typedef.kw | Declare type |
+| `tassign` | tassign.kw | Assign type to variable |
+| `typecheck` | typecheck.kw | Assert type at compile time |
+| `tinfer` | tinfer.kw | Infer type from context |
+| `own` | own.kw | Ownership annotation |
+| `bcheck` | bcheck.kw | Bounds check |
+| `buse` | buse.kw | Bounds-checked array access |
+
+---
+
+## 🔧 Writing Your Own Keywords
+
+Keywords are plain text files. You can add any syntax without modifying the core.
+
+### `.kw` File Format
+
+```
+KEYWORD <name>    # optional: leading keyword for matching
+
+SYNTAX
+<pattern tokens>
+
+COMPILATION
+<ELI code that runs at compile time and emits output tokens>
+```
+
+**Pattern tokens:**
+- `WORD` — exact word match (case-insensitive)
+- `?name` — capture one token
+- `*name` — capture one or more tokens (stops at the next keyword or newline)
+- `**name` — capture a multi-line block
+
+**Compile-time opcodes** extend the standard 42 with:
+
+| Opcode | Effect |
+|--------|--------|
+| `e` | Pop string-table index; emit that token to output |
+| `x` | Pop count and start; emit string-table tokens in that range |
+| `r` | Pop integer; emit it as a decimal token |
+| `n` | Push a unique integer (for generating jump labels) |
+| `q` | Pop key; push `ct_state[key]` or 0 |
+| `w` | Pop key, pop value; store `ct_state[key] = value` |
+
+Captured tokens are stored in a string table. `ct_state[-1]`/`ct_state[-2]` hold the start and count for the first capture slot; `-3`/`-4` for the second; and so on.
+
+### Example: Custom `repeat` Keyword
+
+```
+KEYWORD repeat
+
+SYNTAX
+repeat *count : **body endrepeat
+
+COMPILATION
+n U 0 T          # allocate label_start, save in slot 0
+0 F d            # emit [:label_start]
+*count           # emit the count expression
+n U 1 T          # allocate label_end, save in slot 1
+-99 q 33 A e     # emit Z (jump-if-zero opcode)
+1 F j            # emit label_end reference
+**body           # emit body
+-99 q 30 A e     # emit J (unconditional jump)
+0 F j            # emit label_start reference
+1 F d            # emit [:label_end]
+```
+
+Labels are generated as `[:__LN__]` definitions and `__LN__` references. The `resolve_labels` pass converts these into relative integer offsets before final output.
+
+---
+
+## 🏗 Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        ELI2 Source (.eli2)                        │
+│         (variables, functions, if/while, match, arrays)           │
+└─────────────────────────────┬────────────────────────────────────┘
+                              │
+               ┌──────────────▼──────────────┐
+               │    alpha_p3.py  (Frontend)   │
+               │  • Load .kw keyword files    │
+               │  • Match syntax patterns     │
+               │  • Run compile-time ELI VM   │
+               │  • Resolve labels → offsets  │
+               └──────────────┬──────────────┘
+                              │  raw ELI tokens
+               ┌──────────────▼──────────────┐
+               │     ELI Bytecode (.eli)      │
+               │   (opcodes + integer lits)   │
+               └──────┬────────────────┬──────┘
+                      │                │
+        ┌─────────────▼──────┐  ┌──────▼──────────────┐
+        │  alpha_i2.py       │  │   alpha_c2.py        │
+        │  (VM Interpreter)  │  │   (Compiler)         │
+        │  • Stack machine   │  │   • Emit ARM64 asm   │
+        │  • Dict memory     │  │   • Assemble + link  │
+        │  • Direct execute  │  └──────┬───────────────┘
+        └─────────────┬──────┘         │
+                      │          ┌─────▼──────────────────┐
+                   Execute       │  arm64.py /             │
+                                 │  arm64_baremetal.py     │
+                                 └─────┬───────────────────┘
+                                       │
+                                 ┌─────▼────────┐
+                                 │  Native Binary│
+                                 │  (macOS/QEMU) │
+                                 └───────────────┘
+```
+
+### Source Files
+
+| File | Purpose |
+|------|---------|
+| `src/alpha_i2.py` | VM interpreter — executes `.eli` directly |
+| `src/alpha_p3.py` | ELI2 frontend — compiles `.eli2` → `.eli` |
+| `src/alpha_c2.py` | Compiler driver — compiles `.eli` → ARM64 binary |
+| `src/backend/arm64.py` | ARM64 macOS backend |
+| `src/backend/arm64_baremetal_qemu.py` | ARM64 bare-metal / QEMU backend |
+| `src/backend/backend_interface.py` | Backend abstraction interface |
+| `src/library/keywords/*.kw` | ELI2 keyword definitions (37 keywords) |
+| `extensions/interpreter.eli` | ELI interpreter written in ELI (self-hosting demo) |
+| `frontend/server.py` | Flask server for the web playground |
+| `frontend/index.html` | Browser-based ELI/ELI2 IDE |
+
+---
 
 ## 🧪 Test Suite
 
-ELI has **15 comprehensive tests** covering 100% of opcodes:
+15 bytecode tests in `tests/bytecode/` cover all opcodes. A full ELI2 keyword test lives at `tests/keywords/test_all_kw.eli2`.
 
-### 1. test_arop.eli - Arithmetic Operations
-
-```eli
-10 5 M P    # 10 * 5 = 50
-10 2 D P    # 10 / 2 = 5
-10 3 X P    # 10 % 3 = 1
-H
-```
-
-**Expected output**: `50\n5\n1`
-
-**Tests**: `M` (multiply), `D` (divide), `X` (modulo)
-
-### 2. test_countdown.eli - Loops
-
-```eli
-10 1000 T
-1000 F 0 G 11 Z
-1000 F P
-1000 F 1 s 1000 T
--9 J
-H
-```
-
-**Expected output**: `10\n9\n8\n7\n6\n5\n4\n3\n2\n1`
-
-**Tests**: `T` (store), `F` (load), `G` (greater than), `Z` (jump if zero), `J` (jump)
-
-### 3. test_fibonacci.eli - Complex Algorithm
-
-```eli
-0 1000 T 1 1001 T 10 1002 T
-1002 F 0 G 23 Z
-1001 F P
-1000 F 1001 F A 1001 F 1000 T 1001 T
-1002 F 1 s 1002 T
--27 J
-H
-```
-
-**Expected output**: `1\n1\n2\n3\n5\n8\n13\n21\n34\n55`
-
-**Tests**: `A` (add), `s` (subtract), memory operations, loops
-
-### 4. test_factorial.eli - Factorial (5!)
-
-```eli
-1 1000 T 5 1001 T
-1001 F 1 G 18 Z
-1000 F 1001 F M 1000 T
-1001 F 1 s 1001 T
--14 J
-1000 F P
-H
-```
-
-**Expected output**: `120`
-
-**Tests**: Multiplication, comparison, control flow
-
-### 5. test_sum.eli - Sum 1 to 10
-
-```eli
-0 1000 T 1 1001 T
-1001 F 10 G 15 Z
-1000 F 1001 F A 1000 T
-1001 F 1 A 1001 T
--14 J
-1000 F P
-H
-```
-
-**Expected output**: `55`
-
-**Tests**: Addition, loops, memory
-
-### 6. test_stack.eli - Stack Operations
-
-```eli
-10 U U P P P          # DUP twice: 10 10 10
-5 7 W P P             # SWAP: 7 5
-99 88 V P             # DROP 88: 99
-3 4 Y P P P           # OVER: 3 4 3
-1 2 3 R P P P         # ROT: 2 3 1
-H
-```
-
-**Expected output**: `10\n10\n10\n5\n7\n99\n3\n4\n3\n1\n3\n2`
-
-**Tests**: `U` (dup), `W` (swap), `V` (drop), `Y` (over), `R` (rot)
-
-### 7. test_arrays.eli - Array Operations
-
-```eli
-1 2 3 3 a      # Create array [1,2,3]
-U l P          # Length = 3
-0 g P          # Get index 0 = 1
-1 g P          # Get index 1 = 2
-2 g P          # Get index 2 = 3
-H
-```
-
-**Expected output**: `3\n1\n2\n3`
-
-**Tests**: `a` (make array), `l` (length), `g` (get index)
-
-### 8. test_functions.eli - Function Calls
-
-```eli
-5 7 C P        # Call function at offset 7
-7 7 C P        # Call again
-H              # Halt
-U M Q          # Function: DUP, MUL, RETURN
-```
-
-**Expected output**: `25\n49`
-
-**Tests**: `C` (call), `Q` (return), relative addressing
-
-### 9. test_bitwise.eli - Bitwise Operations
-
-```eli
-5 ~ P          # ~5 = -6
-8 2 < P        # 8 << 2 = 32
-32 2 > P       # 32 >> 2 = 8
-1 0 & P        # 1 & 0 = 0
-1 0 | P        # 1 | 0 = 1
-1 1 ^ P        # 1 ^ 1 = 0
-0 ! P          # !0 = 1
-5 ! P          # !5 = 0
-H
-```
-
-**Expected output**: `-6\n32\n8\n0\n1\n0\n1\n0`
-
-**Tests**: `~`, `<`, `>`, `&`, `|`, `^`, `!`
-
-### 10. test_pointers.eli - Pointer Arithmetic
-
-```eli
-1000 10 @ P     # 1000 + 10 = 1010
-2000 500 # P    # 2000 - 500 = 1500
-10 20 30 3 a 100 S   # Store array at address 100
-100 B l P       # Load and print length = 3
-H
-```
-
-**Expected output**: `1010\n1500\n3`
-
-**Tests**: `@` (ptr add), `#` (ptr sub), `B` (read buffer), `S` (set buffer)
-
-## 🧪 Running Tests
-
-### Test All with Interpreter
+### Run all ELI bytecode tests
 
 ```bash
-#!/bin/bash
-# test_all.sh
-
-for test in tests/*.eli; do
-    echo "Testing $(basename $test)..."
+for test in tests/bytecode/*.eli; do
+    echo "=== $(basename $test) ==="
     python3 src/alpha_i2.py "$test"
-    echo "---"
 done
 ```
 
-### Test All with Compiler (ARM64 macOS)
+### Run the ELI2 keyword test
 
 ```bash
-#!/bin/bash
-# compile_and_test.sh
-
-for test in tests/*.eli; do
-    name=$(basename "$test" .eli)
-    echo "Compiling $name..."
-    python3 src/alpha_c2.py "$test" -a arm64 -o "tests/$name"
-    echo "Running tests/$name..."
-    "./tests/$name"
-    echo "---"
-done
+python3 src/alpha_p3.py --run tests/keywords/test_all_kw.eli2
 ```
 
-### Verify Interpreter/Compiler Equivalence
+### Verify interpreter/compiler equivalence (ARM64 macOS)
 
 ```bash
-#!/bin/bash
-# verify_equivalence.sh
-
-for test in tests/*.eli; do
+for test in tests/bytecode/*.eli; do
     name=$(basename "$test" .eli)
-
-    # Run with interpreter
-    interp_out=$(python3 src/alpha_i2.py "$test" 2>&1 | grep -v "Final stack")
-
-    # Compile and run
+    interp=$(python3 src/alpha_i2.py "$test" 2>&1 | grep -v "Final stack")
     python3 src/alpha_c2.py "$test" -a arm64 -o "tests/$name" 2>/dev/null
-    comp_out=$("./tests/$name" 2>&1)
-
-    # Compare
-    if [ "$interp_out" = "$comp_out" ]; then
-        echo "✓ $name: PASS"
-    else
-        echo "✗ $name: FAIL"
-        echo "  Interpreter: $interp_out"
-        echo "  Compiler: $comp_out"
-    fi
+    comp=$(./tests/"$name" 2>&1)
+    [ "$interp" = "$comp" ] && echo "✓ $name" || echo "✗ $name"
 done
 ```
 
-## 📈 Test Coverage
+### Test Coverage
 
-| Category | Coverage | Opcodes Tested |
-|----------|----------|----------------|
-| Arithmetic | **100%** (7/7) | `A`, `s`, `M`, `D`, `X`, `a`, `l`, `g` |
-| Stack Operations | **100%** (5/5) | `U`, `W`, `V`, `Y`, `R` |
-| Memory Operations | **100%** (6/6) | `T`, `F`, `@`, `#`, `B`, `S` |
-| Control Flow | **100%** (4/4) | `J`, `Z`, `N`, `H` |
-| Functions | **100%** (2/2) | `C`, `Q` |
-| Arrays | **100%** (3/3) | `a`, `l`, `g` |
-| Comparison | **100%** (3/3) | `E`, `G`, `L` |
-| Boolean/Bitwise | **100%** (7/7) | `!`, `&`, `|`, `^`, `~`, `<`, `>` |
-| I/O | **100%** (4/4) | `P` tested; `I`, `K`, `O` |
-| Atomics | **100%** (3/3) | `$`, `%`, `=` |
-| **Total** | **100%** (44/44) | Production-ready coverage |
-.
+| Category | Coverage | Opcodes |
+|----------|----------|---------|
+| Arithmetic | 100% | `A s M D X a l g` |
+| Stack | 100% | `U W V Y R` |
+| Memory | 100% | `T F @ # B S` |
+| Control Flow | 100% | `J Z N H` |
+| Functions | 100% | `C Q` |
+| Comparison | 100% | `E G L` |
+| Boolean/Bitwise | 100% | `! & \| ^ ~ < >` |
+| I/O | 100% | `P O I K` |
+| Atomics | 100% | `$ % =` |
+| **Total** | **100% (44/44)** | All opcodes verified |
 
-## 🏗️ Architecture
+---
 
-```
-┌─────────────────┐
-│  ELI Source     │  (Raw opcodes + literals)
-└────────┬────────┘
-         │
-    ┌────▼─────┐
-    │  Parser  │  (Token → (type, value))
-    └────┬─────┘
-         │
-    ┌────▼────────────────────┐
-    │                         │
-┌───▼────────┐    ┌──────────▼─────┐
-│ Interpreter│    │    Compiler    │
-│  (alpha_i2)│    │  (alpha_c2)    │
-└────┬───────┘    └──────┬─────────┘
-     │                   │
-  Execute            ┌───▼──────┐
-   Code              │ ARM64.py │
-                     │ Backend  │
-                     └───┬──────┘
-                         │
-                     ┌───▼──────┐
-                     │Assembly  │
-                     └───┬──────┘
-                         │
-                     ┌───▼──────┐
-                     │  Binary  │
-                     └──────────┘
+## 🌐 Web Playground
+
+```bash
+cd frontend
+python3 server.py
+# Open http://localhost:5000
 ```
 
-### Semantic Equivalence
+The browser IDE lets you write ELI or ELI2 code, run it inline, and inspect the compiled ELI bytecode output for ELI2 programs.
 
-Both interpreter and compiler implement **identical semantics**:
-- ✅ All 15 tests produce identical output
-- ✅ No preprocessing in either implementation
-- ✅ Same relative offset addressing
-- ✅ Same stack/memory/call-stack behavior
+---
+
+## 📈 Benchmarks
+
+| Benchmark | Description |
+|-----------|-------------|
+| `benchmarks/sumofmillion.eli` | Sum integers 1 to 1,000,000 |
+| `benchmarks/dotproduct.eli` | Dot product of two vectors |
+| `benchmarks/factorialof10.eli` | Factorial of 10 |
+
+```bash
+python3 benchmarks/run_all_benchmarks.py
+```
+
+---
 
 ## 🎯 Use Cases
 
-- **AI Code Generation** - Simplified compilation target for LLMs
-- **Educational** - Learn compiler design and stack-based languages
-- **Embedded Systems** - Minimal runtime, direct control
-- **Research** - Study minimal language design
-- **Prototyping** - Quick algorithm testing
+- **AI Code Generation** — A minimal, unambiguous compilation target for LLMs; eliminates the label-resolution problem entirely
+- **Compiler Education** — Clean implementation of a tokenizer, VM, macro expander, and native code generator in ~4000 lines of Python
+- **Macro System Design** — The `.kw` format demonstrates hygienic macro expansion using a stack VM as the compile-time engine
+- **Embedded / Bare-Metal** — Minimal runtime, direct memory control, QEMU-ready ARM64 backend
+- **Self-Hosting** — `extensions/interpreter.eli` implements a working ELI interpreter entirely in ELI
 
-## 📚 Documentation
-
-- [Language Specification](docs/LANGUAGE_SPEC.md) - Complete language reference
-- [Tutorial](docs/TUTORIAL.md) - Getting started guide
-- [Compiler Architecture](docs/COMPILER_ARCH.md) - Implementation details
-- [Opcode Reference](docs/OPCODE_REFERENCE.md) - Quick reference card
+---
 
 ## 🤝 Contributing
 
-Contributions welcome! Areas of interest:
+High-value contribution areas:
 
-- 🔧 Additional compiler backends (x86_64, RISC-V, WebAssembly)
-- 📦 Standard library development
-- 🛠️ IDE/editor support (syntax highlighting, LSP)
-- 📊 Performance optimizations
-- 📝 Documentation improvements
-- ✅ Additional test coverage
-- 🌐 Platform support (Linux, Windows)
+- Additional compiler backends (x86_64, RISC-V, WebAssembly)
+- New `.kw` keywords for the standard library
+- IDE integration (syntax highlighting, LSP server)
+- Platform support (Linux ARM64, Windows)
+- Performance optimizations
 
-### Development Setup
+```bash
+git clone https://github.com/sufiyankureshi688/ELI-lang.git
+cd ELI-lang
+# No install needed
+python3 src/alpha_i2.py tests/bytecode/test_fibonacci.eli
+python3 src/alpha_p3.py --run tests/keywords/test_all_kw.eli2
+```
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes
-4. Run tests to ensure everything works
-5. Submit a pull request
+---
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License — see [LICENSE](LICENSE) for details.
 
 ## 📧 Contact
 
@@ -526,29 +630,20 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🎓 Citation
 
-If you use ELI in research, please cite:
-
 ```bibtex
 @misc{kureshi2025eli,
-  author = {Sufiyan Kureshi},
-  title = {ELI: Emergent Language Interface - An AI-First Stack Language},
-  year = {2025},
+  author    = {Sufiyan Kureshi},
+  title     = {ELI: Emergent Language Interface — An AI-First Stack Language},
+  year      = {2025},
   publisher = {GitHub},
-  url = {https://github.com/sufiyankureshi688/ELI-lang}
+  url       = {https://github.com/sufiyankureshi688/ELI-lang}
 }
 ```
 
 ## 🌟 Acknowledgments
 
-Inspired by:
-- **Forth** - Stack-based design and postfix notation
-- **PostScript** - Stack-based graphics language
-- **Joy** - Functional composition on stacks
-- **Brainfuck** - Minimalist language design
-- **LLVM** - Modular compiler infrastructure
+Inspired by Forth, PostScript, Joy, Brainfuck, and LLVM.
 
 ---
 
-**Built with ❤️ for AI code generation**
-
-*ELI v10.0 - Where machines write machine code*
+*ELI v10.0 — where machines write machine code*
